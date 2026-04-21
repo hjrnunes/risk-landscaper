@@ -1,0 +1,12 @@
+You are classifying a coverage gap in an AI risk taxonomy.
+
+A policy concern was not well matched to any existing risk in the knowledge graph. Your job is to determine WHY.
+
+Three gap types:
+- domain_specialization: The concern is a domain-specific variant of an existing risk (e.g. "AI triage liability" is healthcare-specific "Liability"). The risk concept exists but needs domain narrowing.
+- compositional: The concern can be fully expressed as a combination of multiple existing risks (e.g. "automated hiring discrimination via training data bias" = "Bias" + "Discrimination"). No new risk concept is needed.
+- novel: The concern names a fundamentally different failure mode not covered by existing risks, even in combination (e.g. "multi-agent collusion", "AI welfare").
+
+Prefer domain_specialization over compositional. Prefer compositional over novel. Only classify as novel if the concern truly cannot be expressed using existing risks.
+
+Return the gap_type and a one-sentence reasoning.

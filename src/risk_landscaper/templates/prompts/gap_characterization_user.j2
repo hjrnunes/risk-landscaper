@@ -1,0 +1,8 @@
+Policy concern: {{ policy_concept }}
+Definition: {{ concept_definition }}
+
+Nearest existing risks (none matched well):
+{% for c in candidates %}
+- {{ c.name }}: {{ c.description }}
+  {%- if c.distance is not none %} (distance: {{ "%.3f" | format(c.distance) }}){% endif %}
+{% endfor %}

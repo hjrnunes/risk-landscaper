@@ -1,0 +1,34 @@
+Enrich each policy with boundary examples, acceptable uses, risk controls, and human involvement requirements.
+
+Organization: {{ organization }}
+Domain: {{ domain }}
+
+Policies to enrich:
+{% for p in policies %}
+- {{ p.policy_concept }}: {{ p.concept_definition }}
+{% endfor %}
+
+For each policy, provide:
+- boundary_examples: pairs of prohibited vs acceptable use
+- acceptable_uses: list of explicitly permitted uses
+- risk_controls: mitigations or guardrails mentioned
+- human_involvement: any human oversight requirement
+- agent: who performs the governed action (e.g. 'AI assistant', 'clinician', 'the system')
+- activity: what action is being governed (e.g. 'diagnose', 'disclose', 'recommend')
+- entity: what is acted upon (e.g. 'patient data', 'financial records', 'personal information')
+
+{% if cot_examples %}
+=== EXAMPLE ===
+{% for ex in cot_examples %}
+Policy: {{ ex.policy_concept }}
+Input excerpt:
+{{ ex.input_excerpt }}
+Extracted:
+{{ ex.extracted | tojson(indent=2) }}
+{% endfor %}
+=== END EXAMPLE ===
+{% endif %}
+
+=== DOCUMENT ===
+{{ document_text }}
+=== END DOCUMENT ===

@@ -1,0 +1,5 @@
+Policies:
+
+{% for p in policies %}
+- {{ p.policy_concept }}: {{ p.concept_definition }}
+{% endfor %}

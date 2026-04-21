@@ -1,0 +1,8 @@
+Policy: {{ policy_concept }}
+Definition: {{ concept_definition }}
+
+Candidate risks:
+{% for c in candidates %}
+- {{ c.index }}: {{ c.name }} — {{ c.description }}
+  {%- if c.concern %} (Concern: {{ c.concern }}){% endif %}
+{% endfor %}

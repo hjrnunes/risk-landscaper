@@ -1,0 +1,18 @@
+Extract organizational context from this policy document.
+
+Return: organization name, domain/industry, purpose of AI use, AI systems mentioned, AI users, AI subjects, governing regulations, and named entities (people, products, departments with their roles).
+
+{% if cot_examples %}
+=== EXAMPLE ===
+{% for ex in cot_examples %}
+Input excerpt:
+{{ ex.input_excerpt }}
+Extracted:
+{{ ex.extracted | tojson(indent=2) }}
+{% endfor %}
+=== END EXAMPLE ===
+{% endif %}
+
+=== DOCUMENT ===
+{{ document_text }}
+=== END DOCUMENT ===
