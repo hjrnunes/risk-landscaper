@@ -1,0 +1,16 @@
+Analyze this AI risk and produce its causal chain.
+
+## Risk
+Name: {{ risk_name }}
+Description: {{ risk_description }}
+{% if risk_concern %}Concern: {{ risk_concern }}{% endif %}
+{% if risk_type %}Type: {{ risk_type }}{% endif %}
+{% if source_type_hint %}Source type hint: {{ source_type_hint }}{% endif %}
+
+## Related Policies
+{% for p in policies %}
+- {{ p.concept }}: {{ p.definition }}
+{% endfor %}
+{% if not policies %}
+No specific policies provided.
+{% endif %}
