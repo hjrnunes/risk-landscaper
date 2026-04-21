@@ -29,6 +29,7 @@ AIRO AI Card alignment — evolved the data model and pipeline to produce govern
   - VAIR v1.0 keyword matching — free-layer enrichment of consequences (7 types) and impacts (9 types) from risk description/concern text, no LLM calls.
   - Control type and targets inference from action description keywords.
   - LLM-assisted causal chain synthesis for primary-relevance risks (new `enrich_chains` pipeline stage). Skippable with `--skip-chain-enrichment`.
+- **Causal chain in reports** — risk landscape report and AI card now render the full causal chain per risk: risk sources (with VAIR source type), consequences, impacts (with area and severity), typed controls (with targets), and linked incidents (with status and source URI). Collapsed preview badges show enrichment counts at a glance. New "Causal Chain Coverage" summary section in the risk landscape report.
 
 ### Changed
 

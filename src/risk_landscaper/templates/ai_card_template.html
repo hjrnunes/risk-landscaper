@@ -301,8 +301,18 @@
                     x-text="risk.risk_framework"></span>
                   <span x-show="risk.risk_level" class="px-2 py-0.5 rounded text-xs font-semibold capitalize"
                     :class="riskLevelClass(risk.risk_level)" x-text="risk.risk_level"></span>
+                  <span x-show="risk.risk_type" class="px-2 py-0.5 rounded text-xs bg-slate-200 text-slate-700" x-text="risk.risk_type"></span>
                 </div>
                 <div class="font-mono text-xs text-gray-500" x-text="risk.risk_id"></div>
+                <template x-if="!expanded">
+                  <div class="flex flex-wrap gap-1 mt-1">
+                    <span x-show="risk.risk_sources?.length" class="px-1.5 py-0.5 rounded text-[10px] bg-cyan-50 text-cyan-700" x-text="`${risk.risk_sources.length} source${risk.risk_sources.length > 1 ? 's' : ''}`"></span>
+                    <span x-show="risk.consequences?.length" class="px-1.5 py-0.5 rounded text-[10px] bg-orange-50 text-orange-700" x-text="`${risk.consequences.length} consequence${risk.consequences.length > 1 ? 's' : ''}`"></span>
+                    <span x-show="risk.impacts?.length" class="px-1.5 py-0.5 rounded text-[10px] bg-red-50 text-red-700" x-text="`${risk.impacts.length} impact${risk.impacts.length > 1 ? 's' : ''}`"></span>
+                    <span x-show="risk.controls?.length" class="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700" x-text="`${risk.controls.length} control${risk.controls.length > 1 ? 's' : ''}`"></span>
+                    <span x-show="risk.incidents?.length" class="px-1.5 py-0.5 rounded text-[10px] bg-amber-50 text-amber-700" x-text="`${risk.incidents.length} incident${risk.incidents.length > 1 ? 's' : ''}`"></span>
+                  </div>
+                </template>
               </div>
               <svg class="w-5 h-5 text-gray-400 transition-transform" :class="expanded ? 'rotate-180' : ''"
                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -318,13 +328,56 @@
                 <p class="text-xs text-gray-400 uppercase mb-1">Concern</p>
                 <p class="text-sm text-gray-700" x-text="risk.risk_concern"></p>
               </div>
+
+              <!-- Risk type + descriptors -->
+              <template x-if="risk.risk_type || risk.descriptors?.length">
+                <div class="flex flex-wrap items-center gap-2">
+                  <template x-if="risk.risk_type">
+                    <span class="tip px-2 py-0.5 rounded text-xs bg-slate-200 text-slate-800 font-medium" data-tip="Risk category from the source framework.">
+                      <span x-text="risk.risk_type"></span>
+                    </span>
+                  </template>
+                  <template x-for="desc in risk.descriptors || []" :key="desc">
+                    <span class="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600" x-text="desc"></span>
+                  </template>
+                </div>
+              </template>
+
+              <!-- Risk Sources -->
+              <template x-if="risk.risk_sources?.length">
+                <div>
+                  <p class="tip text-xs text-gray-400 uppercase mb-1" data-tip="AIRO risk sources — what causes or contributes to this risk. Categorised by VAIR source type.">Risk Sources</p>
+                  <div class="space-y-1">
+                    <template x-for="src in risk.risk_sources" :key="src.description">
+                      <div class="flex items-start gap-2 text-sm">
+                        <span x-show="src.source_type" class="px-2 py-0.5 rounded text-xs bg-cyan-100 text-cyan-800 font-medium shrink-0" x-text="src.source_type"></span>
+                        <span class="text-gray-700" x-text="src.description"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Consequences -->
+              <template x-if="risk.consequences?.length">
+                <div>
+                  <p class="tip text-xs text-gray-400 uppercase mb-1" data-tip="AIRO risk consequences — what happens when this risk materialises. Matched from VAIR vocabulary.">Consequences</p>
+                  <div class="flex flex-wrap gap-1">
+                    <template x-for="cons in risk.consequences" :key="cons.description">
+                      <span class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800" x-text="cons.description"></span>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Impacts -->
               <template x-if="risk.impacts?.length">
                 <div>
-                  <p class="text-xs text-gray-400 uppercase mb-1">Impacts</p>
+                  <p class="tip text-xs text-gray-400 uppercase mb-1" data-tip="AIRO risk impacts — harms to individuals, groups, or society.">Impacts</p>
                   <div class="space-y-1">
                     <template x-for="imp in risk.impacts" :key="imp.description">
                       <div class="flex items-center gap-2 text-sm">
-                        <span x-show="imp.area" class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700 capitalize" x-text="imp.area?.replace(/_/g, ' ')"></span>
+                        <span x-show="imp.area" class="px-2 py-0.5 rounded text-xs bg-red-100 text-red-800 capitalize" x-text="imp.area?.replace(/_/g, ' ')"></span>
                         <span x-show="imp.severity" class="px-2 py-0.5 rounded text-xs font-semibold capitalize" :class="severityClass(imp.severity)" x-text="imp.severity"></span>
                         <span class="text-gray-700" x-text="imp.description"></span>
                       </div>
@@ -332,13 +385,15 @@
                   </div>
                 </div>
               </template>
+
+              <!-- Controls -->
               <template x-if="risk.controls?.length">
                 <div>
-                  <p class="text-xs text-gray-400 uppercase mb-1">Controls</p>
+                  <p class="tip text-xs text-gray-400 uppercase mb-1" data-tip="Risk controls — actions that detect, evaluate, mitigate, or eliminate this risk.">Controls</p>
                   <div class="space-y-1">
                     <template x-for="ctrl in risk.controls" :key="ctrl.description">
-                      <div class="flex items-center gap-2 text-sm">
-                        <span class="px-2 py-0.5 rounded text-xs font-medium"
+                      <div class="flex items-start gap-2 text-sm">
+                        <span class="px-2 py-0.5 rounded text-xs font-medium shrink-0"
                           :class="{
                             'bg-blue-100 text-blue-800': ctrl.control_type === 'detect',
                             'bg-purple-100 text-purple-800': ctrl.control_type === 'evaluate',
@@ -347,12 +402,42 @@
                             'bg-gray-100 text-gray-600': !ctrl.control_type
                           }"
                           x-text="ctrl.control_type || 'control'"></span>
+                        <span x-show="ctrl.targets" class="tip px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-500 shrink-0" :data-tip="`Targets the ${ctrl.targets} level of the causal chain.`" x-text="ctrl.targets"></span>
                         <span class="text-gray-700" x-text="ctrl.description"></span>
                       </div>
                     </template>
                   </div>
                 </div>
               </template>
+
+              <!-- Incidents -->
+              <template x-if="risk.incidents?.length">
+                <div>
+                  <p class="tip text-xs text-gray-400 uppercase mb-1" data-tip="Real-world AI incidents linked to this risk from the knowledge graph.">Incidents</p>
+                  <div class="space-y-2">
+                    <template x-for="inc in risk.incidents" :key="inc.name">
+                      <div class="border border-gray-100 rounded p-2">
+                        <div class="flex items-center gap-2 mb-0.5">
+                          <span class="font-medium text-sm text-gray-800" x-text="inc.name"></span>
+                          <span x-show="inc.status" class="px-2 py-0.5 rounded text-xs font-medium"
+                            :class="{
+                              'bg-red-100 text-red-800': inc.status === 'ongoing',
+                              'bg-green-100 text-green-800': inc.status === 'concluded' || inc.status === 'mitigated',
+                              'bg-gray-100 text-gray-600': inc.status === 'halted' || inc.status === 'near_miss'
+                            }"
+                            x-text="inc.status?.replace('_', ' ')"></span>
+                        </div>
+                        <p x-show="inc.description" class="text-xs text-gray-600" x-text="inc.description"></p>
+                        <template x-if="inc.source_uri">
+                          <a :href="inc.source_uri" target="_blank" class="text-xs text-indigo-600 hover:underline mt-1 inline-block">Source</a>
+                        </template>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+
+              <!-- Cross-Mappings -->
               <template x-if="risk.cross_mappings?.length">
                 <div>
                   <p class="text-xs text-gray-400 uppercase mb-1">Cross-Mappings</p>
@@ -367,6 +452,8 @@
                   </div>
                 </div>
               </template>
+
+              <!-- Related Policies -->
               <template x-if="risk.related_policies?.length">
                 <div>
                   <p class="text-xs text-gray-400 uppercase mb-1">Related Policies</p>
