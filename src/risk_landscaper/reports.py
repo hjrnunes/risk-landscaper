@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from risk_landscaper.models import PolicyProfile, RunReport
+from risk_landscaper.models import PolicyProfile, RiskLandscape, RunReport
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 
@@ -25,6 +25,18 @@ def build_risk_landscape_report(data: dict, output_path: Path) -> Path:
 
 def build_run_report_html(data: dict, output_path: Path) -> Path:
     return _render("run_report_template.html", data, output_path)
+
+
+def build_ai_card_report(
+    profile: PolicyProfile,
+    landscape: RiskLandscape,
+    output_path: Path,
+) -> Path:
+    data = {
+        "profile": profile.model_dump(),
+        "landscape": landscape.model_dump(),
+    }
+    return _render("ai_card_template.html", data, output_path)
 
 
 # ---- Ingest report ----

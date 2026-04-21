@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Card</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .tip {
+      position: relative;
+      cursor: help;
+      border-bottom: 1px dotted #9ca3af;
+    }
+    .tip::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: #f9fafb;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.4;
+      padding: 6px 10px;
+      border-radius: 6px;
+      white-space: normal;
+      width: max-content;
+      max-width: 320px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 50;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    .tip:hover::after { opacity: 1; }
+    .tip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #e5e7eb;
+      color: #6b7280;
+      font-size: 10px;
+      font-weight: 700;
+      font-style: normal;
+      line-height: 1;
+      margin-left: 4px;
+      flex-shrink: 0;
+      cursor: help;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen" x-data="cardApp()" x-cloak>
+
+  <!-- Header -->
+  <header class="bg-gray-900 text-white px-6 py-4 shadow-lg">
+    <div class="max-w-screen-xl mx-auto flex items-start justify-between">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight" x-text="'AI Card: ' + systemName"></h1>
+        <p class="text-gray-400 text-sm mt-0.5">
+          <span x-text="data.profile.organization?.name || '?'"></span>
+          &mdash; <span x-text="data.profile.domain || '?'"></span>
+          &mdash; <span x-text="data.landscape.timestamp || '?'"></span>
+        </p>
+      </div>
+      <div class="text-right text-xs text-gray-400 space-y-0.5 mt-1">
+        <div>Version <span class="text-gray-200 font-medium" x-text="data.landscape.version || '—'"></span></div>
+        <div>Model <span class="text-gray-200 font-medium" x-text="data.landscape.model || '—'"></span></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-screen-xl mx-auto p-6 space-y-6">
+
+    <!-- 1. General Information + 2. Intended Use -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- 1. General Information -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <span class="tip" data-tip="AI system metadata: modality, techniques, risk classification, and provider organization.">1. General Information</span>
+          <span class="tip-icon tip" data-tip="Key system-level properties from the policy profile and AIRO classification.">i</span>
+        </h2>
+        <div class="text-sm space-y-2">
+          <template x-if="primarySystem">
+            <div class="space-y-2">
+              <div>
+                <span class="tip text-gray-400" data-tip="The AI system covered by this card.">System</span>
+                <p class="font-medium text-gray-800" x-text="primarySystem.name"></p>
+              </div>
+              <div x-show="primarySystem.description" class="text-xs text-gray-500" x-text="primarySystem.description"></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div x-show="primarySystem.modality">
+                  <span class="tip text-gray-400" data-tip="System modality: software, embedded, or service.">Modality</span>
+                  <p class="font-medium text-gray-800 capitalize" x-text="primarySystem.modality"></p>
+                </div>
+                <div x-show="primarySystem.risk_level">
+                  <span class="tip text-gray-400" data-tip="EU AI Act risk classification level.">Risk Level</span>
+                  <p>
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold capitalize"
+                      :class="riskLevelClass(primarySystem.risk_level)"
+                      x-text="primarySystem.risk_level"></span>
+                  </p>
+                </div>
+              </div>
+              <div x-show="primarySystem.techniques?.length">
+                <span class="tip text-gray-400" data-tip="AI techniques used by the system (e.g. deep learning, statistical model, rule-based).">AI Techniques</span>
+                <div class="flex flex-wrap gap-1 mt-1">
+                  <template x-for="t in primarySystem.techniques" :key="t">
+                    <span class="px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800" x-text="t"></span>
+                  </template>
+                </div>
+              </div>
+              <div x-show="primarySystem.automation_level">
+                <span class="tip text-gray-400" data-tip="Level of automation: full, partial, or human-in-the-loop.">Automation</span>
+                <p class="font-medium text-gray-800 capitalize" x-text="primarySystem.automation_level?.replace('_', ' ')"></p>
+              </div>
+            </div>
+          </template>
+          <div>
+            <span class="tip text-gray-400" data-tip="Organization providing or operating the AI system.">Provider</span>
+            <p class="font-medium text-gray-800" x-text="data.profile.organization?.name || '—'"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Intended Use -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <span class="tip" data-tip="Domain, purpose, and stakeholder roles — who deploys, uses, and is affected by the AI system.">2. Intended Use</span>
+          <span class="tip-icon tip" data-tip="AIRO stakeholder classification: Deployer, AI User, AI Subject.">i</span>
+        </h2>
+        <div class="text-sm space-y-2">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <span class="tip text-gray-400" data-tip="Business domain or industry sector.">Domain</span>
+              <p class="font-medium text-gray-800 capitalize" x-text="data.profile.domain || '—'"></p>
+            </div>
+          </div>
+          <div>
+            <span class="tip text-gray-400" data-tip="Stated purposes of the AI system.">Purpose</span>
+            <ul class="mt-1 space-y-0.5">
+              <template x-for="pu in data.profile.purpose || []" :key="pu">
+                <li class="text-gray-700 flex items-start gap-1.5">
+                  <span class="text-gray-400 mt-0.5">&#8226;</span>
+                  <span x-text="pu"></span>
+                </li>
+              </template>
+            </ul>
+            <p x-show="!(data.profile.purpose?.length)" class="text-gray-400 italic">Not specified</p>
+          </div>
+          <div class="border-t border-gray-100 pt-2 space-y-1.5">
+            <template x-for="d in deployers" :key="d.name">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded text-xs bg-indigo-100 text-indigo-800">Deployer</span>
+                <span class="text-gray-800" x-text="d.name"></span>
+              </div>
+            </template>
+            <template x-for="u in aiUsers" :key="u.name">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded text-xs bg-teal-100 text-teal-800">AI User</span>
+                <span class="text-gray-800" x-text="u.name"></span>
+              </div>
+            </template>
+            <template x-for="s in aiSubjects" :key="s.name">
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded text-xs bg-amber-100 text-amber-800">AI Subject</span>
+                <span class="text-gray-800" x-text="s.name"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- 3. Human Involvement + 4. Compliance -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- 3. Human Involvement -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <span class="tip" data-tip="Automation level and stakeholder involvement matrix — how each entity participates in and controls the AI system.">3. Human Involvement</span>
+          <span class="tip-icon tip" data-tip="AIRO involvement dimensions: intended/unintended, active/passive, informed/uninformed, and control over output.">i</span>
+        </h2>
+        <div x-show="primarySystem?.automation_level" class="mb-3">
+          <span class="tip text-gray-400 text-sm" data-tip="Overall automation level of the AI system.">Level of Automation</span>
+          <p class="font-medium text-gray-800 capitalize" x-text="primarySystem?.automation_level?.replace('_', ' ') || '—'"></p>
+        </div>
+        <div x-show="involvementRows.length" class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs text-gray-400 uppercase border-b border-gray-200">
+                <th class="tip pb-2 pr-3" data-tip="Stakeholder or entity involved with the AI system.">Entity</th>
+                <th class="tip pb-2 pr-3 text-center" data-tip="Whether this entity's involvement is intended by design.">Intended</th>
+                <th class="tip pb-2 pr-3 text-center" data-tip="Whether this entity actively interacts with the system.">Active</th>
+                <th class="tip pb-2 pr-3 text-center" data-tip="Whether this entity is informed about the AI system's operation.">Informed</th>
+                <th class="tip pb-2" data-tip="How much control this entity has over the system's output: challenge, correct, or cannot opt out.">Control</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="row in involvementRows" :key="row.name">
+                <tr class="border-b border-gray-100">
+                  <td class="py-2 pr-3 font-medium text-gray-800" x-text="row.name"></td>
+                  <td class="py-2 pr-3 text-center">
+                    <span class="text-lg" :class="row.intended ? 'text-green-600' : 'text-red-400'" x-text="row.intended ? '✓' : '✗'"></span>
+                  </td>
+                  <td class="py-2 pr-3 text-center">
+                    <span class="text-lg" :class="row.active ? 'text-green-600' : 'text-red-400'" x-text="row.active ? '✓' : '✗'"></span>
+                  </td>
+                  <td class="py-2 pr-3 text-center">
+                    <span class="text-lg" :class="row.informed ? 'text-green-600' : 'text-red-400'" x-text="row.informed ? '✓' : '✗'"></span>
+                  </td>
+                  <td class="py-2 text-xs capitalize text-gray-600" x-text="row.output_control?.replace('_', ' ') || '—'"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <p x-show="!involvementRows.length" class="text-sm text-gray-400 italic">No stakeholder involvement data</p>
+      </section>
+
+      <!-- 4. Compliance & Certification -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <span class="tip" data-tip="Regulations, standards, and codes of conduct applicable to the AI system.">4. Compliance &amp; Certification</span>
+          <span class="tip-icon tip" data-tip="Regulatory references extracted from the policy document.">i</span>
+        </h2>
+        <div x-show="data.profile.regulations?.length" class="space-y-2">
+          <template x-for="r in data.profile.regulations || []" :key="r.name">
+            <div class="border border-gray-200 rounded-lg p-3">
+              <span class="font-medium text-gray-800 text-sm" x-text="r.name"></span>
+              <span x-show="r.jurisdiction" class="text-xs text-gray-400 ml-1" x-text="'(' + r.jurisdiction + ')'"></span>
+              <div x-show="r.reference" class="text-xs text-gray-500 mt-0.5" x-text="r.reference"></div>
+            </div>
+          </template>
+        </div>
+        <p x-show="!data.profile.regulations?.length" class="text-sm text-gray-400 italic">No regulations identified</p>
+      </section>
+
+    </div>
+
+    <!-- 5. Risk Profile -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <span class="tip" data-tip="Matched AI safety risks from the knowledge graph, with impact areas, risk levels, and cross-framework mappings.">5. Risk Profile</span>
+        <span class="tip-icon tip" data-tip="Risks matched via semantic search against 600+ risks across 10 frameworks.">i</span>
+      </h2>
+
+      <!-- Impact area summary -->
+      <template x-if="impactAreas.length">
+        <div class="mb-4">
+          <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Impact Areas</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-xs text-gray-400 uppercase border-b border-gray-200">
+                  <th class="tip pb-2 pr-3" data-tip="AIRO area of impact (e.g. health & safety, fundamental rights, society, environment).">Area</th>
+                  <th class="tip pb-2 pr-3" data-tip="Highest severity rating among risks affecting this area.">Severity</th>
+                  <th class="tip pb-2 pr-3" data-tip="Stakeholders affected by risks in this impact area.">Affected Stakeholders</th>
+                  <th class="tip pb-2 text-center" data-tip="Number of risk-impact instances in this area.">Count</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="area in impactAreas" :key="area.area">
+                  <tr class="border-b border-gray-100">
+                    <td class="py-2 pr-3 font-medium text-gray-800 capitalize" x-text="area.area?.replace(/_/g, ' ')"></td>
+                    <td class="py-2 pr-3">
+                      <span x-show="area.max_severity" class="px-2 py-0.5 rounded text-xs font-semibold capitalize"
+                        :class="severityClass(area.max_severity)" x-text="area.max_severity"></span>
+                      <span x-show="!area.max_severity" class="text-gray-400">—</span>
+                    </td>
+                    <td class="py-2 pr-3 text-xs text-gray-600" x-text="area.stakeholders.join(', ') || '—'"></td>
+                    <td class="py-2 text-center font-mono text-gray-600" x-text="area.count"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
+
+      <!-- Risk cards -->
+      <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Risk Registry</h3>
+      <div class="space-y-2">
+        <template x-for="risk in data.landscape.risks || []" :key="risk.risk_id">
+          <div class="border border-gray-200 rounded-lg" x-data="{ expanded: false }">
+            <div class="flex items-start justify-between p-3 cursor-pointer hover:bg-gray-50" @click="expanded = !expanded">
+              <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1 mb-0.5">
+                  <span class="font-semibold text-gray-900" x-text="risk.risk_name"></span>
+                  <span class="px-2 py-0.5 rounded text-xs shrink-0"
+                    :class="frameworkColor(risk.risk_framework)"
+                    x-text="risk.risk_framework"></span>
+                  <span x-show="risk.risk_level" class="px-2 py-0.5 rounded text-xs font-semibold capitalize"
+                    :class="riskLevelClass(risk.risk_level)" x-text="risk.risk_level"></span>
+                </div>
+                <div class="font-mono text-xs text-gray-500" x-text="risk.risk_id"></div>
+              </div>
+              <svg class="w-5 h-5 text-gray-400 transition-transform" :class="expanded ? 'rotate-180' : ''"
+                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </div>
+            <div x-show="expanded" class="px-3 pb-3 pt-0 space-y-3 border-t border-gray-100">
+              <div x-show="risk.risk_description">
+                <p class="text-xs text-gray-400 uppercase mb-1">Description</p>
+                <p class="text-sm text-gray-700" x-text="risk.risk_description"></p>
+              </div>
+              <div x-show="risk.risk_concern">
+                <p class="text-xs text-gray-400 uppercase mb-1">Concern</p>
+                <p class="text-sm text-gray-700" x-text="risk.risk_concern"></p>
+              </div>
+              <template x-if="risk.impacts?.length">
+                <div>
+                  <p class="text-xs text-gray-400 uppercase mb-1">Impacts</p>
+                  <div class="space-y-1">
+                    <template x-for="imp in risk.impacts" :key="imp.description">
+                      <div class="flex items-center gap-2 text-sm">
+                        <span x-show="imp.area" class="px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-700 capitalize" x-text="imp.area?.replace(/_/g, ' ')"></span>
+                        <span x-show="imp.severity" class="px-2 py-0.5 rounded text-xs font-semibold capitalize" :class="severityClass(imp.severity)" x-text="imp.severity"></span>
+                        <span class="text-gray-700" x-text="imp.description"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+              <template x-if="risk.controls?.length">
+                <div>
+                  <p class="text-xs text-gray-400 uppercase mb-1">Controls</p>
+                  <div class="space-y-1">
+                    <template x-for="ctrl in risk.controls" :key="ctrl.description">
+                      <div class="flex items-center gap-2 text-sm">
+                        <span class="px-2 py-0.5 rounded text-xs font-medium"
+                          :class="{
+                            'bg-blue-100 text-blue-800': ctrl.control_type === 'detect',
+                            'bg-purple-100 text-purple-800': ctrl.control_type === 'evaluate',
+                            'bg-amber-100 text-amber-800': ctrl.control_type === 'mitigate',
+                            'bg-red-100 text-red-800': ctrl.control_type === 'eliminate',
+                            'bg-gray-100 text-gray-600': !ctrl.control_type
+                          }"
+                          x-text="ctrl.control_type || 'control'"></span>
+                        <span class="text-gray-700" x-text="ctrl.description"></span>
+                      </div>
+                    </template>
+                  </div>
+                </div>
+              </template>
+              <template x-if="risk.cross_mappings?.length">
+                <div>
+                  <p class="text-xs text-gray-400 uppercase mb-1">Cross-Mappings</p>
+                  <div class="flex flex-wrap gap-1">
+                    <template x-for="cm in risk.cross_mappings" :key="cm.id">
+                      <span class="tip inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-gray-100 text-gray-700"
+                        :data-tip="`Cross-mapping (${cm.mapping_type})`">
+                        <span class="font-mono" x-text="cm.id"></span>
+                        <span class="text-gray-400" x-text="`(${cm.mapping_type})`"></span>
+                      </span>
+                    </template>
+                  </div>
+                </div>
+              </template>
+              <template x-if="risk.related_policies?.length">
+                <div>
+                  <p class="text-xs text-gray-400 uppercase mb-1">Related Policies</p>
+                  <div class="flex flex-wrap gap-1">
+                    <template x-for="pol in risk.related_policies" :key="pol">
+                      <span class="px-2 py-0.5 rounded text-xs bg-indigo-100 text-indigo-800" x-text="pol"></span>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- 6. Trustworthy Characteristics + 7. Governance -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- 6. Trustworthy Characteristics -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <span class="tip" data-tip="ISO/IEC 24028 trustworthy characteristics addressed by the matched risks (e.g. safety, security, privacy, fairness).">6. Trustworthy Characteristics</span>
+          <span class="tip-icon tip" data-tip="Aggregated across all risk cards in this landscape.">i</span>
+        </h2>
+        <div x-show="trustworthyChars.length" class="flex flex-wrap gap-2">
+          <template x-for="c in trustworthyChars" :key="c">
+            <span class="px-3 py-1 rounded-lg text-sm bg-indigo-50 text-indigo-800 font-medium capitalize" x-text="c.replace(/_/g, ' ')"></span>
+          </template>
+        </div>
+        <p x-show="!trustworthyChars.length" class="text-sm text-gray-400 italic">Not specified</p>
+      </section>
+
+      <!-- 7. Governance -->
+      <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+        <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <span class="tip" data-tip="Governance provenance — who produced this card, under which governance function, and its review status.">7. Governance</span>
+          <span class="tip-icon tip" data-tip="Tracks provenance and AIMS activity mapping for this risk landscape.">i</span>
+        </h2>
+        <template x-if="data.landscape.provenance">
+          <div class="text-sm space-y-2">
+            <div x-show="data.landscape.provenance.produced_by">
+              <span class="tip text-gray-400" data-tip="Tool or process that generated this card.">Produced by</span>
+              <p class="font-medium text-gray-800" x-text="data.landscape.provenance.produced_by"></p>
+            </div>
+            <div x-show="data.landscape.provenance.governance_function">
+              <span class="tip text-gray-400" data-tip="Lewis et al. governance function: direct, evaluate, or monitor.">Governance function</span>
+              <p class="font-medium text-gray-800 capitalize" x-text="data.landscape.provenance.governance_function"></p>
+            </div>
+            <div x-show="data.landscape.provenance.review_status">
+              <span class="tip text-gray-400" data-tip="Current review status of this card.">Review status</span>
+              <p>
+                <span class="px-2 py-0.5 rounded text-xs font-medium capitalize"
+                  :class="{
+                    'bg-green-100 text-green-800': data.landscape.provenance.review_status === 'approved',
+                    'bg-blue-100 text-blue-800': data.landscape.provenance.review_status === 'reviewed',
+                    'bg-gray-100 text-gray-600': data.landscape.provenance.review_status === 'draft'
+                  }"
+                  x-text="data.landscape.provenance.review_status"></span>
+              </p>
+            </div>
+            <div x-show="data.landscape.provenance.aims_activities?.length">
+              <span class="tip text-gray-400" data-tip="AIMS activities this card satisfies (Lewis et al. AI Management System).">AIMS Activities</span>
+              <div class="flex flex-wrap gap-1 mt-1">
+                <template x-for="a in data.landscape.provenance.aims_activities" :key="a">
+                  <span class="px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-800" x-text="a"></span>
+                </template>
+              </div>
+            </div>
+          </div>
+        </template>
+        <p x-show="!data.landscape.provenance" class="text-sm text-gray-400 italic">No provenance data</p>
+      </section>
+
+    </div>
+
+    <!-- 8. Policy Coverage -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <span class="tip" data-tip="Summary of risk coverage: matched risks, frameworks represented, and any gaps in coverage.">8. Policy Coverage</span>
+        <span class="tip-icon tip" data-tip="Overview of how well the knowledge graph covers the policy concepts.">i</span>
+      </h2>
+
+      <!-- Overview counters -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div class="tip text-center p-4 bg-gray-50 rounded-lg" data-tip="Total unique AI safety risks matched from the knowledge graph.">
+          <p class="text-3xl font-bold text-indigo-600" x-text="(data.landscape.risks || []).length"></p>
+          <p class="text-xs text-gray-400 mt-1">Risks Matched</p>
+        </div>
+        <div class="tip text-center p-4 bg-gray-50 rounded-lg" data-tip="Number of distinct risk frameworks represented.">
+          <p class="text-3xl font-bold text-green-600" x-text="Object.keys(data.landscape.framework_coverage || {}).length"></p>
+          <p class="text-xs text-gray-400 mt-1">Frameworks</p>
+        </div>
+        <div class="tip text-center p-4 bg-gray-50 rounded-lg" data-tip="Number of policy concepts with at least one risk matched.">
+          <p class="text-3xl font-bold text-teal-600" x-text="(data.landscape.policy_mappings || []).length"></p>
+          <p class="text-xs text-gray-400 mt-1">Policy Mappings</p>
+        </div>
+        <div class="tip text-center p-4 bg-gray-50 rounded-lg" data-tip="Policy concepts that could not be matched to any existing risk.">
+          <p class="text-3xl font-bold"
+            :class="(data.landscape.coverage_gaps || []).length ? 'text-amber-600' : 'text-green-600'"
+            x-text="(data.landscape.coverage_gaps || []).length"></p>
+          <p class="text-xs text-gray-400 mt-1">Coverage Gaps</p>
+        </div>
+      </div>
+
+      <!-- Framework coverage bars -->
+      <div x-show="Object.keys(data.landscape.framework_coverage || {}).length" class="space-y-2 mb-4">
+        <template x-for="[fw, count] in Object.entries(data.landscape.framework_coverage || {}).sort((a, b) => b[1] - a[1])" :key="fw">
+          <div class="flex items-center gap-3">
+            <div class="flex-1 bg-gray-200 rounded-lg overflow-hidden">
+              <div class="flex items-center justify-between px-3 py-2 rounded-lg"
+                :class="frameworkBarColor(fw)"
+                :style="`width: ${Math.max((count / Math.max(...Object.values(data.landscape.framework_coverage || {}))) * 100, 10)}%`">
+                <span class="text-sm font-medium" x-text="fw"></span>
+                <span class="text-sm font-mono font-semibold" x-text="count"></span>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Coverage gaps -->
+      <template x-if="(data.landscape.coverage_gaps || []).length">
+        <div>
+          <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Coverage Gaps</h3>
+          <div class="space-y-2">
+            <template x-for="gap in data.landscape.coverage_gaps" :key="gap.policy_concept">
+              <div class="flex items-center gap-2 text-sm py-2 border-b border-gray-100">
+                <span class="font-medium text-gray-800" x-text="gap.policy_concept"></span>
+                <span class="px-2 py-0.5 rounded text-xs font-medium"
+                  :class="{
+                    'bg-blue-100 text-blue-800': gap.gap_type === 'domain_specialization',
+                    'bg-gray-200 text-gray-600': gap.gap_type === 'compositional',
+                    'bg-red-100 text-red-800': gap.gap_type === 'novel'
+                  }"
+                  x-text="gap.gap_type?.replace('_', ' ')"></span>
+                <span class="text-xs text-gray-400 font-mono" x-text="'conf: ' + gap.confidence?.toFixed(2)"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+    </section>
+
+  </div>
+
+<script>
+const DATA = __REPORT_DATA__;
+
+function cardApp() {
+  const p = DATA.profile;
+  const l = DATA.landscape;
+  const stakeholders = p.stakeholders || [];
+  const primarySystem = (p.ai_systems || [])[0] || null;
+
+  const deployers = stakeholders.filter(s => s.roles?.includes('airo:AIDeployer'));
+  const aiUsers = stakeholders.filter(s => s.roles?.includes('airo:AIUser'));
+  const aiSubjects = stakeholders.filter(s => s.roles?.includes('airo:AISubject'));
+
+  const involvementRows = stakeholders
+    .filter(s => s.involvement || s.activity || s.awareness || s.output_control)
+    .map(s => ({
+      name: s.name,
+      intended: s.involvement === 'intended',
+      active: s.activity === 'active',
+      informed: s.awareness === 'informed',
+      output_control: s.output_control,
+    }));
+
+  const trustworthySet = new Set();
+  for (const risk of l.risks || []) {
+    for (const c of risk.trustworthy_characteristics || []) {
+      trustworthySet.add(c);
+    }
+  }
+
+  const areaMap = {};
+  for (const risk of l.risks || []) {
+    for (const impact of risk.impacts || []) {
+      const area = impact.area || 'unspecified';
+      if (!areaMap[area]) {
+        areaMap[area] = { area, max_severity: null, stakeholders: new Set(), count: 0 };
+      }
+      areaMap[area].count++;
+      if (impact.severity) areaMap[area].max_severity = impact.severity;
+      for (const s of impact.affected_stakeholders || []) {
+        areaMap[area].stakeholders.add(s);
+      }
+    }
+  }
+  const impactAreas = Object.values(areaMap).map(a => ({
+    ...a,
+    stakeholders: [...a.stakeholders],
+  }));
+
+  const systemName = primarySystem?.name || p.organization?.name || l.run_slug || 'Unknown';
+
+  return {
+    data: DATA,
+    primarySystem,
+    systemName,
+    deployers,
+    aiUsers,
+    aiSubjects,
+    involvementRows,
+    trustworthyChars: [...trustworthySet].sort(),
+    impactAreas,
+
+    riskLevelClass(level) {
+      if (!level) return '';
+      const l = level.toLowerCase();
+      if (l.includes('high') || l.includes('critical')) return 'bg-red-100 text-red-800';
+      if (l.includes('med') || l.includes('moderate') || l.includes('limited')) return 'bg-amber-100 text-amber-800';
+      return 'bg-green-100 text-green-800';
+    },
+
+    severityClass(sev) {
+      if (!sev) return '';
+      const s = sev.toLowerCase();
+      if (s.includes('high') || s.includes('critical')) return 'bg-red-100 text-red-800';
+      if (s.includes('med') || s.includes('moderate')) return 'bg-amber-100 text-amber-800';
+      return 'bg-green-100 text-green-800';
+    },
+
+    frameworkColor(framework) {
+      const colors = {
+        'IBM Risk Atlas': 'bg-blue-100 text-blue-800',
+        'NIST AI RMF': 'bg-green-100 text-green-800',
+        'OWASP LLM Top 10': 'bg-red-100 text-red-800',
+        'AIR 2024': 'bg-purple-100 text-purple-800',
+        'MIT AI Risk Repository': 'bg-yellow-100 text-yellow-800',
+      };
+      return colors[framework] || 'bg-gray-100 text-gray-800';
+    },
+
+    frameworkBarColor(framework) {
+      const colors = {
+        'IBM Risk Atlas': 'bg-blue-200 text-blue-900',
+        'NIST AI RMF': 'bg-green-200 text-green-900',
+        'OWASP LLM Top 10': 'bg-red-200 text-red-900',
+        'AIR 2024': 'bg-purple-200 text-purple-900',
+        'MIT AI Risk Repository': 'bg-yellow-200 text-yellow-900',
+      };
+      return colors[framework] || 'bg-gray-300 text-gray-900';
+    },
+  };
+}
+</script>
+</body>
+</html>

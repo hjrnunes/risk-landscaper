@@ -178,9 +178,12 @@ def run(
     typer.echo(f"Risk landscape written to {landscape_path}")
     typer.echo(f"  {len(landscape.risks)} unique risks, {len(landscape.framework_coverage)} frameworks")
 
-    from risk_landscaper.reports import build_risk_landscape_report
+    from risk_landscaper.reports import build_risk_landscape_report, build_ai_card_report
     build_risk_landscape_report(landscape.model_dump(), output / "risk-landscape.html")
     typer.echo(f"Risk landscape report written to {output / 'risk-landscape.html'}")
+
+    build_ai_card_report(profile, landscape, output / "ai-card.html")
+    typer.echo(f"AI Card written to {output / 'ai-card.html'}")
 
     # --- Write report ---
     report.token_usage = tracker.to_dict()
