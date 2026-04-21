@@ -1,9 +1,11 @@
 from risk_landscaper.models import (
     CoverageGap,
+    GovernanceProvenance,
     PolicyProfile,
     PolicyRiskMapping,
     PolicySourceRef,
     RiskCard,
+    RiskControl,
     RiskLandscape,
     KnowledgeBaseRef,
     WeakMatch,
@@ -34,6 +36,21 @@ def _detect_framework(risk_id: str) -> str:
     return "unknown"
 
 
+def _actions_to_controls(action_descriptions: list[str]) -> list[RiskControl]:
+    return [RiskControl(description=desc) for desc in action_descriptions if desc]
+
+
+def _collect_related_policies(
+    risk_id: str,
+    mappings: list[PolicyRiskMapping],
+) -> list[str]:
+    return [
+        m.policy_concept
+        for m in mappings
+        if any(rm.risk_id == risk_id for rm in m.matched_risks)
+    ]
+
+
 def build_risk_landscape(
     mappings: list[PolicyRiskMapping],
     risk_details_cache: dict[str, dict],
@@ -50,7 +67,6 @@ def build_risk_landscape(
     related_risks = related_risks or {}
     risk_actions = risk_actions or {}
 
-    # Build normalized risk registry (deduplicated)
     seen_risk_ids: set[str] = set()
     risks: list[RiskCard] = []
     framework_counts: dict[str, int] = {}
@@ -58,7 +74,6 @@ def build_risk_landscape(
 
     for mapping in mappings:
         for rm in mapping.matched_risks:
-            # Collect weak matches
             if rm.match_distance is not None and rm.match_distance > WEAK_MATCH_THRESHOLD:
                 weak_matches.append(WeakMatch(
                     risk_id=rm.risk_id,
@@ -72,6 +87,13 @@ def build_risk_landscape(
 
             details = risk_details_cache.get(rm.risk_id, {})
             framework = _detect_framework(rm.risk_id)
+            actions = risk_actions.get(rm.risk_id, [])
+
+            descriptor_raw = details.get("descriptor", [])
+            descriptors = descriptor_raw if isinstance(descriptor_raw, list) else (
+                [descriptor_raw] if descriptor_raw else []
+            )
+
             risks.append(RiskCard(
                 risk_id=rm.risk_id,
                 risk_name=details.get("name") or rm.risk_name or rm.risk_id,
@@ -79,12 +101,15 @@ def build_risk_landscape(
                 risk_concern=details.get("concern") or "",
                 risk_framework=framework,
                 cross_mappings=related_risks.get(rm.risk_id, []),
-                related_actions=risk_actions.get(rm.risk_id, []),
+                risk_type=details.get("risk_type"),
+                descriptors=descriptors,
+                controls=_actions_to_controls(actions),
+                related_policies=_collect_related_policies(rm.risk_id, mappings),
+                related_actions=actions,
             ))
 
             framework_counts[framework] = framework_counts.get(framework, 0) + 1
 
-    # Build policy source from PolicyProfile
     policy_source = None
     if policy_profile:
         policy_source = PolicySourceRef(
@@ -92,6 +117,13 @@ def build_risk_landscape(
             domain=policy_profile.domain,
             policy_count=len(policy_profile.policies),
         )
+
+    provenance = GovernanceProvenance(
+        produced_by="risk-landscaper",
+        governance_function="evaluate",
+        aims_activities=["aimsA6"],
+        review_status="draft",
+    )
 
     return RiskLandscape(
         model=model,
@@ -105,4 +137,5 @@ def build_risk_landscape(
         framework_coverage=framework_counts,
         weak_matches=weak_matches,
         coverage_gaps=coverage_gaps or [],
+        provenance=provenance,
     )
