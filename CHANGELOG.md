@@ -23,6 +23,11 @@ AIRO AI Card alignment — evolved the data model and pipeline to produce govern
 - **run_all_policies.py** — script to run the pipeline against every policy example in parallel, outputs to `runs/`. `-j` flag controls concurrency (defaults to CPU count).
 - **justfile** — `just run-all <base_url> <model>` recipe.
 - **HTML reports** — self-contained ingest, risk landscape, and run reports generated alongside YAML/JSON artifacts. Ported from taxonomy-refiner. Tailwind + Alpine.js, `__REPORT_DATA__` JSON embedding pattern.
+- **Causal chain population** — RiskCards now populated with `risk_sources`, `consequences`, `impacts`, and `incidents`.
+  - Incident linking from AI Atlas Nexus knowledge graph (`get_related_risk_incidents`).
+  - Source type inference from `risk_type` → VAIR vocabulary (`data`, `model`, `attack`, `organisational`, `performance`).
+  - Control type and targets inference from action description keywords.
+  - LLM-assisted causal chain synthesis for primary-relevance risks (new `enrich_chains` pipeline stage). Skippable with `--skip-chain-enrichment`.
 
 ### Changed
 
