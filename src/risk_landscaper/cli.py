@@ -242,6 +242,17 @@ def run(
     else:
         typer.echo("Skipping causal chain enrichment (--skip-chain-enrichment)")
 
+    # --- Stage 6: Assessment ---
+    from risk_landscaper.stages.assess import assess_risk_levels, compute_aims_coverage
+    t_stage = time.monotonic()
+    assess_risk_levels(landscape, report=report)
+    aims = compute_aims_coverage(profile, landscape, report=report)
+    _stage_event("assess", "stage_completed", t_stage)
+    report.stages_completed.append("assess")
+    leveled = sum(1 for r in landscape.risks if r.risk_level)
+    typer.echo(f"  {leveled}/{len(landscape.risks)} risks with computed risk level")
+    typer.echo(f"  AIMS coverage: {', '.join(aims) if aims else 'none'}")
+
     landscape_path = output / "risk-landscape.yaml"
     landscape_path.write_text(yaml.dump(
         landscape.model_dump(), default_flow_style=False, sort_keys=False,

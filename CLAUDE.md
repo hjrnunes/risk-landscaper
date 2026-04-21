@@ -22,11 +22,12 @@ src/risk_landscaper/
     map_risks.py         # Perspective-based search + LLM selection + gap detection
     build_landscape.py   # Assemble RiskLandscape from mappings + Nexus data
     enrich_chains.py     # LLM-assisted causal chain synthesis for primary risks
+    assess.py            # Risk level computation + AIMS coverage analysis (no LLM)
   templates/
     prompts/             # Jinja2 templates (system + user per stage)
     ingest_cot.json      # Chain-of-thought examples for ingest
     *_template.html      # HTML report templates (Tailwind + Alpine.js)
-tests/                   # pytest suite (230 tests)
+tests/                   # pytest suite (260 tests)
 policy_examples/         # 11 policy files across 6 domains
 docs/
   design.md              # AIRO AI Card alignment design
@@ -78,7 +79,7 @@ uv run pytest tests/test_models.py  # single file
 
 ### Pipeline Pattern
 
-- 5-stage pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains
+- 6-stage pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains -> assess
 - Ingest has 4 LLM passes: context extraction, policy extraction, policy enrichment, entity enrichment
 - Entity enrichment (pass 4) populates AIRO fields on stakeholders, AI systems, organization, and regulations. Skipped for Nexus pre-parsed inputs (no source document to extract from).
 - Ground-truth cross-mappings from knowledge graph, never LLM-generated

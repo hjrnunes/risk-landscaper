@@ -18,7 +18,7 @@ Status of the AIRO AI Card alignment implementation.
 
 ### Pipeline
 
-- [x] 5-stage pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains
+- [x] 6-stage pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains -> assess
 - [x] `build_landscape` populates risk_type, descriptors, controls (from Nexus actions), related_policies
 - [x] `build_landscape` emits GovernanceProvenance on every landscape
 - [x] `ingest` extracts governance_function during enrichment pass
@@ -60,7 +60,14 @@ Status of the AIRO AI Card alignment implementation.
 - [x] Regulatory reference details (jurisdiction, reference)
 - [x] `--skip-entity-enrichment` CLI flag
 
-### Tests (230 total)
+### Assessment and Scoring
+
+- [x] Risk level computation — 5x5 risk matrix (likelihood x severity) from causal chain data, fallback to max severity
+- [x] AIMS coverage analysis — structural inspection of profile + landscape for A2/A4/A6/A8/A9 satisfaction
+- [x] Per-card AIMS activity tagging (aimsA6 always, aimsA8 if controls, aimsA9 if evaluations)
+- [x] Dynamic `GovernanceProvenance.aims_activities` (replaces hardcoded `["aimsA6"]`)
+
+### Tests (260 total)
 
 - [x] 19 model tests
 - [x] 32 build_landscape tests (risk_type, controls, provenance, incidents, VAIR, source/control inference)
@@ -71,6 +78,7 @@ Status of the AIRO AI Card alignment implementation.
 - [x] 5 enrich_chains tests
 - [x] 20 VAIR vocabulary matching tests
 - [x] 76 policy battery tests across 11 example files
+- [x] 30 assessment tests (risk matrix, max level, AIMS coverage, per-card tagging, report events)
 - [x] 3 CLI tests
 
 ### Documentation
@@ -92,11 +100,6 @@ Status of the AIRO AI Card alignment implementation.
 - [ ] **RiskCard -> Model Card** — project RiskCard fields to model card `considerations` section.
 - [ ] **RiskCard -> lm-eval tasks** — generate lm-eval task configs from RiskCard fields.
 - [ ] **lm-eval results -> EvaluationRef** — ingest evaluation results back into RiskCards.
-
-### Assessment and Scoring
-
-- [ ] **Risk level computation** — derive risk_level from likelihood/severity across the causal chain (currently set manually or left empty).
-- [ ] **Coverage analysis** — identify which AIMS activities are satisfied vs gaps.
 
 ### Infrastructure
 

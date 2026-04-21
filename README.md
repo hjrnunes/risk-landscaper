@@ -10,18 +10,18 @@ Takes policy documents (markdown, JSON, or AI Atlas Nexus payloads) and produces
 Policy Document          AI Atlas Nexus (600+ risks, 10 frameworks)
        |                              |
        v                              v
-  +---------+    +----------+    +----------+    +----------+    +---------+
-  | Ingest  | -> | Detect   | -> | Map      | -> | Build    | -> | Enrich  |
-  | context |    | domain   |    | risks    |    | landscape|    | chains  |
-  | policies|    |          |    | gaps     |    | cards    |    |         |
-  | entities|    +----------+    +----------+    +----------+    +---------+
-  +---------+                                         |               |
-       |                                              v               v
-       v                                    risk-landscape.yaml (with causal chains)
+  +---------+    +----------+    +----------+    +----------+    +---------+    +--------+
+  | Ingest  | -> | Detect   | -> | Map      | -> | Build    | -> | Enrich  | -> | Assess |
+  | context |    | domain   |    | risks    |    | landscape|    | chains  |    | levels |
+  | policies|    |          |    | gaps     |    | cards    |    |         |    | AIMS   |
+  | entities|    +----------+    +----------+    +----------+    +---------+    +--------+
+  +---------+                                         |               |             |
+       |                                              v               v             v
+       v                                    risk-landscape.yaml (with causal chains + levels)
   policy-profile.json                       run-report.json
 ```
 
-**Ingest** extracts organizational context, policies, boundary examples, and entity details (stakeholder involvement, AI system attributes, org governance, regulatory references) from documents via LLM (4 passes). **Detect domain** maps the organization to a domain menu. **Map risks** performs perspective-based semantic search against the Nexus knowledge graph, with LLM-based relevance selection and coverage gap detection. **Build landscape** assembles deduplicated RiskCards with VAIR-matched causal chains, typed controls, incident references, cross-framework mappings, and governance provenance. **Enrich chains** uses LLM synthesis to populate causal chains for primary-relevance risks.
+**Ingest** extracts organizational context, policies, boundary examples, and entity details (stakeholder involvement, AI system attributes, org governance, regulatory references) from documents via LLM (4 passes). **Detect domain** maps the organization to a domain menu. **Map risks** performs perspective-based semantic search against the Nexus knowledge graph, with LLM-based relevance selection and coverage gap detection. **Build landscape** assembles deduplicated RiskCards with VAIR-matched causal chains, typed controls, incident references, cross-framework mappings, and governance provenance. **Enrich chains** uses LLM synthesis to populate causal chains for primary-relevance risks. **Assess** computes risk levels via a 5x5 risk matrix and determines AIMS coverage across the landscape (no LLM calls).
 
 ## RiskCard
 
@@ -103,7 +103,7 @@ output/
 ## Development
 
 ```bash
-uv run pytest           # 230 tests
+uv run pytest           # 260 tests
 uv run pytest -v        # verbose
 ```
 
