@@ -73,6 +73,43 @@ class _SlimEnrichmentList(BaseModel):
     enrichments: list[_SlimEnrichment]
 
 
+class _SlimOrgDetail(BaseModel):
+    governance_roles: list[str] = []
+    management_system: str = ""
+    certifications: list[str] = []
+    delegates: list[str] = []
+
+
+class _SlimStakeholderDetail(BaseModel):
+    name: str
+    involvement: Literal["intended", "unintended", ""] = ""
+    activity: Literal["active", "passive", ""] = ""
+    awareness: Literal["informed", "uninformed", ""] = ""
+    output_control: Literal["challenge", "correct", "cannot_opt_out", ""] = ""
+    relationship: Literal["internal", "external", ""] = ""
+    interests: list[str] = []
+
+
+class _SlimAiSystemDetail(BaseModel):
+    name: str
+    modality: str = ""
+    techniques: list[str] = []
+    automation_level: str = ""
+
+
+class _SlimRegulationDetail(BaseModel):
+    name: str
+    jurisdiction: str = ""
+    reference: str = ""
+
+
+class _SlimEntityEnrichment(BaseModel):
+    organization: _SlimOrgDetail
+    stakeholders: list[_SlimStakeholderDetail] = []
+    ai_systems: list[_SlimAiSystemDetail] = []
+    regulations: list[_SlimRegulationDetail] = []
+
+
 # ---------------------------------------------------------------------------
 # Prompt rendering
 # ---------------------------------------------------------------------------
@@ -92,6 +129,20 @@ def _render_policies_messages(document_text: str, context: _SlimContext) -> list
         "organization": context.organization,
         "domain": context.domain,
         "cot_examples": cot.get("policy_examples", []),
+    })
+
+
+def _render_entities_messages(
+    document_text: str,
+    profile: PolicyProfile,
+) -> list[dict[str, str]]:
+    return render_prompt("ingest_entities", {
+        "document_text": document_text,
+        "organization_name": profile.organization.name if profile.organization else "",
+        "domain": profile.domain or "",
+        "stakeholders": profile.stakeholders,
+        "ai_systems": profile.ai_systems,
+        "regulations": profile.regulations,
     })
 
 
@@ -307,6 +358,116 @@ def enrich_policies(
 
 
 # ---------------------------------------------------------------------------
+# Pass 4: Entity enrichment
+# ---------------------------------------------------------------------------
+
+def enrich_entities(
+    document_text: str,
+    profile: PolicyProfile,
+    client: instructor.Instructor,
+    config: LLMConfig,
+    report: RunReport | None = None,
+) -> PolicyProfile:
+    messages = _render_entities_messages(document_text, profile)
+
+    t0 = time.monotonic()
+    result = client.chat.completions.create(
+        model=config.model,
+        response_model=_SlimEntityEnrichment,
+        messages=messages,
+        temperature=config.temperature,
+        max_retries=config.max_retries,
+        max_tokens=config.max_tokens,
+    )
+    duration_ms = (time.monotonic() - t0) * 1000
+    debug.log_call("ingest_entities", messages, result, report=report, duration_ms=duration_ms)
+
+    org = profile.organization
+    if org and result.organization:
+        o = result.organization
+        org = Organization(
+            name=org.name,
+            description=org.description,
+            governance_roles=o.governance_roles or [],
+            management_system=o.management_system or None,
+            certifications=o.certifications or [],
+            delegates=o.delegates or [],
+        )
+
+    stakeholder_map = {s.name: s for s in result.stakeholders}
+    enriched_stakeholders: list[Stakeholder] = []
+    for s in profile.stakeholders:
+        detail = stakeholder_map.get(s.name)
+        if detail:
+            enriched_stakeholders.append(Stakeholder(
+                name=s.name,
+                roles=s.roles,
+                description=s.description,
+                involvement=detail.involvement or None,
+                activity=detail.activity or None,
+                awareness=detail.awareness or None,
+                output_control=detail.output_control or None,
+                relationship=detail.relationship or None,
+                interests=detail.interests or [],
+            ))
+        else:
+            enriched_stakeholders.append(s)
+
+    system_map = {sys.name: sys for sys in result.ai_systems}
+    enriched_systems: list[AiSystem] = []
+    for sys in profile.ai_systems:
+        detail = system_map.get(sys.name)
+        if detail:
+            enriched_systems.append(AiSystem(
+                name=sys.name,
+                description=sys.description,
+                purpose=sys.purpose,
+                risk_level=sys.risk_level,
+                modality=detail.modality or None,
+                techniques=detail.techniques or [],
+                automation_level=detail.automation_level or None,
+                serves_stakeholders=sys.serves_stakeholders,
+                assets=sys.assets,
+            ))
+        else:
+            enriched_systems.append(sys)
+
+    reg_map = {r.name: r for r in result.regulations}
+    enriched_regs: list[RegulatoryReference] = []
+    for r in profile.regulations:
+        detail = reg_map.get(r.name)
+        if detail:
+            enriched_regs.append(RegulatoryReference(
+                name=r.name,
+                jurisdiction=detail.jurisdiction or None,
+                reference=detail.reference or None,
+            ))
+        else:
+            enriched_regs.append(r)
+
+    if report:
+        report.events.append({
+            "stage": "ingest",
+            "event": "entities_enriched",
+            "stakeholders_enriched": sum(1 for s in enriched_stakeholders if s.involvement),
+            "systems_enriched": sum(1 for s in enriched_systems if s.modality or s.techniques),
+            "regulations_enriched": sum(1 for r in enriched_regs if r.jurisdiction),
+            "org_enriched": bool(org and (org.governance_roles or org.management_system)),
+        })
+
+    return PolicyProfile(
+        airo_version=profile.airo_version,
+        organization=org,
+        domain=profile.domain,
+        purpose=profile.purpose,
+        ai_systems=enriched_systems,
+        stakeholders=enriched_stakeholders,
+        regulations=enriched_regs,
+        policies=profile.policies,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Helper: build PolicyProfile from context + policies
 # ---------------------------------------------------------------------------
 
@@ -339,6 +500,7 @@ def ingest(
     client: instructor.Instructor,
     config: LLMConfig,
     skip_enrichment: bool = False,
+    skip_entity_enrichment: bool = False,
     until: str | None = None,
     domain_override: str | None = None,
     organization_override: str | None = None,
@@ -391,4 +553,15 @@ def ingest(
                 "event": "enrichment_skipped",
             })
 
-    return _build_document(context, policies)
+    profile = _build_document(context, policies)
+
+    # Pass 4: Entity enrichment
+    if not skip_entity_enrichment:
+        profile = enrich_entities(document_text, profile, client, config, report=report)
+    elif report:
+        report.events.append({
+            "stage": "ingest",
+            "event": "entity_enrichment_skipped",
+        })
+
+    return profile

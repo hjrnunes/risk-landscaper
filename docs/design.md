@@ -1,6 +1,6 @@
 # Risk Landscaper Design — AIRO AI Card Alignment
 
-This document captures the design for evolving the risk landscaper into an AIRO-aligned AI risk documentation tool. Source material: Obsidian note "Risk Landscape to AI Card Alignment".
+This document captures the design for evolving the risk landscaper into an AIRO-aligned AI risk documentation tool.
 
 ## Vision
 
@@ -164,13 +164,26 @@ RiskCard
 
 ## Sourcing Strategy for Chain Data
 
-Three layers, progressively richer:
+Three layers, progressively richer. All three are implemented.
 
-1. **Nexus lookup (free)** — `related_actions` -> controls, incidents -> incidents, `risk_type` -> card field, `descriptor` -> descriptors. Available today.
-2. **VAIR vocabulary matching (cheap)** — map risk descriptions against VAIR enumerated source/consequence/impact types. Structured labels without LLM calls.
-3. **LLM-assisted synthesis (expensive)** — given risk description + concern + policy context, reason about risk sources, consequences, impacts, materialization conditions. This is where Nexus narrative signal gets structured.
+1. **Nexus lookup (free)** — `related_actions` -> controls, incidents -> incidents, `risk_type` -> card field, `descriptor` -> descriptors. Baseline RiskSource created from risk description + inferred source_type. Control type (`detect | evaluate | mitigate | eliminate`) and targets (`source | risk | consequence`) inferred from action description keywords.
+2. **VAIR vocabulary matching (cheap)** — keyword matching from VAIR v1.0 ontology. Sources (22 types), consequences (7 types), impacts (9 types), impacted areas (5 types). Free-layer enrichment in `build_landscape`, no LLM calls.
+3. **LLM-assisted synthesis (expensive)** — `enrich_chains` stage for primary-relevance risks. Given risk description + concern + policy context, reasons about risk sources, consequences, impacts, materialization conditions. Skippable with `--skip-chain-enrichment`.
 
 A card is valid with just identity + policy links. The chain enriches it progressively.
+
+## Entity Enrichment (Ingest Pass 4)
+
+A dedicated LLM pass enriches entities extracted during context extraction (pass 1) with AIRO-grounded attributes:
+
+- **Stakeholders** — involvement (intended/unintended), activity (active/passive), awareness (informed/uninformed), output_control (challenge/correct/cannot_opt_out), relationship (internal/external), interests
+- **AI systems** — modality (text-to-text, multimodal, etc.), techniques (deep learning, RAG, etc.), automation_level (fully automated, human-in-the-loop, advisory)
+- **Organization** — governance_roles, management_system, certifications, delegates
+- **Regulatory references** — jurisdiction, reference
+
+The LLM receives the original document text plus the list of already-identified entities, and returns structured attributes for each. Empty-string responses are normalized to `None`. Entities missing from the LLM response retain their original values.
+
+**Limitation**: Nexus pre-parsed inputs bypass ingest entirely, so entity enrichment is not available for those inputs. The Nexus adapter creates entities from structured data, but AIRO involvement fields remain unpopulated since there is no natural-language document to extract from.
 
 ## Governance Alignment
 

@@ -13,16 +13,21 @@ src/risk_landscaper/
   llm.py                 # LLM client config, token tracking
   debug.py               # Per-call debug logging
   prompts.py             # Jinja2 prompt rendering
+  reports.py             # HTML report generation (ingest, landscape, AI card, run)
   nexus_adapter.py       # Nexus payload -> PolicyProfile projection
+  vair.py                # VAIR v1.0 vocabulary matching for causal chains
   stages/
-    ingest.py            # 3-pass LLM: context -> policies -> enrichment
+    ingest.py            # 4-pass LLM: context -> policies -> enrichment -> entity enrichment
     detect_domain.py     # Domain menu normalization + LLM fallback
     map_risks.py         # Perspective-based search + LLM selection + gap detection
     build_landscape.py   # Assemble RiskLandscape from mappings + Nexus data
+    enrich_chains.py     # LLM-assisted causal chain synthesis for primary risks
   templates/
     prompts/             # Jinja2 templates (system + user per stage)
     ingest_cot.json      # Chain-of-thought examples for ingest
-tests/                   # pytest suite (~104 tests)
+    *_template.html      # HTML report templates (Tailwind + Alpine.js)
+tests/                   # pytest suite (230 tests)
+policy_examples/         # 11 policy files across 6 domains
 docs/
   design.md              # AIRO AI Card alignment design
   work-tracker.md        # Implementation status and remaining work
@@ -73,10 +78,15 @@ uv run pytest tests/test_models.py  # single file
 
 ### Pipeline Pattern
 
+- 5-stage pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains
+- Ingest has 4 LLM passes: context extraction, policy extraction, policy enrichment, entity enrichment
+- Entity enrichment (pass 4) populates AIRO fields on stakeholders, AI systems, organization, and regulations. Skipped for Nexus pre-parsed inputs (no source document to extract from).
 - Ground-truth cross-mappings from knowledge graph, never LLM-generated
 - Perspective-based search: base query + concept name + deployer/affected/regulator viewpoints
+- VAIR vocabulary matching: keyword-based enrichment of causal chain types (sources, consequences, impacts, impacted areas) without LLM calls
 - Per-call debug logging via `debug.log_call()` when `--debug` is set
 - `RunReport` events with `report=None` default + `if report:` guards
+- HTML reports generated alongside YAML/JSON artifacts (Tailwind + Alpine.js, `__REPORT_DATA__` JSON embedding)
 
 ### Prompt Templates
 
@@ -88,7 +98,7 @@ uv run pytest tests/test_models.py  # single file
 
 - **taxonomy-refiner**: `/Users/hjrnunes/workspace/redhat/hjrnunes/taxonomy-refiner` — parent repo, red-team pipeline
 - **AI Atlas Nexus**: `/Users/hjrnunes/workspace/redhat/ibm/ai-atlas-nexus` — risk knowledge graph (600+ risks, 10 frameworks)
-- **Design context**: Obsidian vault `Red Hat`, note `Red Hat/Risk Common Data Foundation/Risk Landscape to AI Card Alignment`
+- **Design context**: see `docs/design.md`
 
 ## Important
 

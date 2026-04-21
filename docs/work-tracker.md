@@ -18,11 +18,28 @@ Status of the AIRO AI Card alignment implementation.
 
 ### Pipeline
 
+- [x] 5-stage pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains
 - [x] `build_landscape` populates risk_type, descriptors, controls (from Nexus actions), related_policies
 - [x] `build_landscape` emits GovernanceProvenance on every landscape
 - [x] `ingest` extracts governance_function during enrichment pass
 - [x] `ingest` extracts PolicyDecomposition (agent/activity/entity) during enrichment
 - [x] `nexus_adapter` uses Organization instead of Stakeholder
+- [x] `--skip-enrichment`, `--skip-entity-enrichment`, `--skip-chain-enrichment` CLI flags
+
+### HTML Reports
+
+- [x] Ingest report — policy profile visualization
+- [x] Risk landscape report — risk cards with causal chain rendering, coverage summary
+- [x] AI Card report — combined profile + landscape view
+- [x] Run report — per-stage token usage, collapsible LLM call inspection, event log
+- [x] Tailwind + Alpine.js, `__REPORT_DATA__` JSON embedding pattern
+
+### Policy Examples & Battery
+
+- [x] 11 policy files across 6 domains (banking, healthcare, government, corporate, energy, telecom, insurance)
+- [x] `run_all_policies.py` — parallel pipeline execution with `-j` flag
+- [x] `justfile` — `just run-all` recipe
+- [x] 76 parametrized battery tests (format detection, parsing, ingest orchestration, content checks, domain overrides)
 
 ### Causal Chain Population
 
@@ -32,18 +49,29 @@ Status of the AIRO AI Card alignment implementation.
 - [x] Incident linking via Nexus `get_related_risk_incidents()`
 - [x] LLM-assisted causal chain synthesis (primary-relevance risks only)
 - [x] Baseline RiskSource creation from risk description + inferred source_type
+- [x] VAIR vocabulary matching — full keyword matching from VAIR v1.0 ontology. Sources (22 types), consequences (7 types), impacts (9 types), impacted areas (5 types). Free-layer enrichment in `build_landscape`.
 
-### Tests
+### Ingest Entity Enrichment
 
-- [x] 19 model tests covering all new types
-- [x] 5 build_landscape tests (risk_type, controls, related_policies, provenance, descriptor coercion)
-- [x] Ingest tests updated for governance_function and decomposition
-- [x] All 104 tests passing
-- [x] 8 control type/targets inference tests
-- [x] 9 source type inference + incident linking tests
-- [x] 5 enrich_chains tests (primary filtering, policy context, merge, skip non-primary)
-- [x] 20 VAIR vocabulary matching tests (risk sources, consequences, impacts, impacted areas)
-- [x] 2 VAIR integration tests in build_landscape
+- [x] Pass 4: LLM-based entity enrichment for stakeholders, AI systems, organization, and regulations
+- [x] AIRO involvement fields on stakeholders (involvement, activity, awareness, output_control, relationship, interests)
+- [x] AI system details (modality, techniques, automation_level)
+- [x] Organization governance (governance_roles, management_system, certifications, delegates)
+- [x] Regulatory reference details (jurisdiction, reference)
+- [x] `--skip-entity-enrichment` CLI flag
+
+### Tests (230 total)
+
+- [x] 19 model tests
+- [x] 32 build_landscape tests (risk_type, controls, provenance, incidents, VAIR, source/control inference)
+- [x] 21 ingest tests (context, policies, enrichment, entity enrichment, orchestration)
+- [x] 35 map_risks tests (search, filtering, gaps, perspectives)
+- [x] 10 nexus_adapter tests
+- [x] 9 detect_domain tests
+- [x] 5 enrich_chains tests
+- [x] 20 VAIR vocabulary matching tests
+- [x] 76 policy battery tests across 11 example files
+- [x] 3 CLI tests
 
 ### Documentation
 
@@ -57,22 +85,7 @@ Status of the AIRO AI Card alignment implementation.
 
 ### Causal Chain Population
 
-- [x] **VAIR vocabulary matching** — full keyword matching from VAIR v1.0 ontology. Sources (22 types), consequences (7 types), impacts (9 types), impacted areas (5 types). Free-layer enrichment in `build_landscape`.
-- [x] **LLM-assisted chain synthesis** — `enrich_chains` stage for primary-relevance risks.
-- [x] **Incident linking** — `get_related_risk_incidents()` wired into `build_landscape`.
 - [ ] **Evaluation linking** — wire `EvaluationRef` population from lm-eval results or other eval sources.
-
-### Control Enrichment
-
-- [x] **Control type inference** — keyword-based from action description text.
-- [x] **Control targets** — inferred from action keywords (source/risk/consequence).
-
-### Ingest Enrichment
-
-- [ ] **Stakeholder extraction** — extract AIRO involvement fields (involvement, activity, awareness, output_control) from document text.
-- [ ] **AiSystem extraction** — extract modality, techniques, automation_level from document text.
-- [ ] **Organization governance** — extract governance_roles, management_system, certifications.
-- [ ] **Regulatory references** — extract jurisdiction, authority, compliance_status from document text.
 
 ### Interoperability Projections
 
@@ -90,3 +103,7 @@ Status of the AIRO AI Card alignment implementation.
 - [ ] **Nexus-mcp dependency** — currently uses `path = "../taxonomy-refiner/nexus-mcp"`. Needs to be published or vendored for standalone use.
 - [ ] **VAIR vocabulary data** — source and package VAIR type enumerations for matching.
 - [ ] **Output format versioning** — version field on risk-landscape.yaml for schema evolution.
+
+### Known Limitations
+
+- **Nexus pre-parsed inputs skip entity enrichment** — when input is a Nexus JSON payload, the CLI bypasses `ingest()` entirely, so entity enrichment (pass 4) never runs. AIRO involvement fields on stakeholders and AI system attributes remain unpopulated. No natural-language document is available to extract from in this path.

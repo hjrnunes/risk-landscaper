@@ -1,0 +1,54 @@
+Enrich the following entities extracted from a policy document with detailed attributes.
+
+Organization: {{ organization_name }}
+Domain: {{ domain }}
+
+{% if stakeholders %}
+Stakeholders identified:
+{% for s in stakeholders %}
+- {{ s.name }} (roles: {{ s.roles | join(', ') }})
+{% endfor %}
+{% endif %}
+
+{% if ai_systems %}
+AI Systems identified:
+{% for sys in ai_systems %}
+- {{ sys.name }}
+{% endfor %}
+{% endif %}
+
+{% if regulations %}
+Regulations identified:
+{% for r in regulations %}
+- {{ r.name }}
+{% endfor %}
+{% endif %}
+
+For the organization, extract from the document:
+- governance_roles: roles involved in AI governance (e.g. "AI Ethics Board", "Chief AI Officer", "Data Protection Officer")
+- management_system: any management system referenced (e.g. "ISO 42001", "AIMS")
+- certifications: relevant certifications or standards compliance
+- delegates: entities the organization delegates AI governance responsibility to
+
+For each stakeholder, determine from context:
+- involvement: "intended" if they are meant to interact with the AI system, "unintended" if not
+- activity: "active" if they actively use or operate the system, "passive" if they receive its effects
+- awareness: "informed" if they know AI is involved, "uninformed" if not
+- output_control: "challenge" if they can dispute AI output, "correct" if they can modify it, "cannot_opt_out" if they are bound by it
+- relationship: "internal" to the organization or "external"
+- interests: specific interests, concerns, or stakes they hold
+
+For each AI system, determine from context:
+- modality: input/output modality (e.g. "text-to-text", "image-to-text", "multimodal")
+- techniques: AI techniques used (e.g. "deep learning", "transformer", "RAG", "rule-based")
+- automation_level: level of automation (e.g. "fully automated", "human-in-the-loop", "advisory")
+
+For each regulation, determine from context:
+- jurisdiction: geographic or legal jurisdiction (e.g. "EU", "United States", "United Kingdom")
+- reference: specific section, article, or version reference
+
+Leave fields as empty strings if the document provides no evidence.
+
+=== DOCUMENT ===
+{{ document_text }}
+=== END DOCUMENT ===

@@ -216,7 +216,7 @@ def test_ingest_json_array(mock_client, mock_config, filename, domain, org, poli
     ]
 
     report = _make_report()
-    result = ingest(text, "json_array", mock_client, mock_config, report=report)
+    result = ingest(text, "json_array", mock_client, mock_config, skip_entity_enrichment=True, report=report)
 
     assert result.organization.name == org
     assert result.domain == domain
@@ -236,7 +236,7 @@ def test_ingest_json_array_skip_enrichment(mock_client, mock_config, filename, d
     ]
 
     report = _make_report()
-    result = ingest(text, "json_array", mock_client, mock_config, skip_enrichment=True, report=report)
+    result = ingest(text, "json_array", mock_client, mock_config, skip_enrichment=True, skip_entity_enrichment=True, report=report)
 
     assert len(result.policies) == policy_count
     assert mock_client.chat.completions.create.call_count == 1
@@ -292,7 +292,7 @@ def test_ingest_markdown(mock_client, mock_config, filename, domain, org):
     ]
 
     report = _make_report()
-    result = ingest(text, "markdown", mock_client, mock_config, report=report)
+    result = ingest(text, "markdown", mock_client, mock_config, skip_entity_enrichment=True, report=report)
 
     assert result.organization.name == org
     assert result.domain == domain
@@ -435,7 +435,7 @@ def test_domain_override_json(mock_client, mock_config, filename, _count):
     ]
     result = ingest(
         text, "json_array", mock_client, mock_config,
-        skip_enrichment=True,
+        skip_enrichment=True, skip_entity_enrichment=True,
         domain_override="correct_domain",
         organization_override="Correct Org",
     )

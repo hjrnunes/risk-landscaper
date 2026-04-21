@@ -10,18 +10,18 @@ Takes policy documents (markdown, JSON, or AI Atlas Nexus payloads) and produces
 Policy Document          AI Atlas Nexus (600+ risks, 10 frameworks)
        |                              |
        v                              v
-  +---------+    +----------+    +----------+    +----------+
-  | Ingest  | -> | Detect   | -> | Map      | -> | Build    |
-  | context |    | domain   |    | risks    |    | landscape|
-  | policies|    |          |    | gaps     |    | cards    |
-  +---------+    +----------+    +----------+    +----------+
-       |                                              |
-       v                                              v
-  policy-profile.json                     risk-landscape.yaml
-                                          run-report.json
+  +---------+    +----------+    +----------+    +----------+    +---------+
+  | Ingest  | -> | Detect   | -> | Map      | -> | Build    | -> | Enrich  |
+  | context |    | domain   |    | risks    |    | landscape|    | chains  |
+  | policies|    |          |    | gaps     |    | cards    |    |         |
+  | entities|    +----------+    +----------+    +----------+    +---------+
+  +---------+                                         |               |
+       |                                              v               v
+       v                                    risk-landscape.yaml (with causal chains)
+  policy-profile.json                       run-report.json
 ```
 
-**Ingest** extracts organizational context, policies, and boundary examples from documents via LLM. **Detect domain** maps the organization to a domain menu. **Map risks** performs perspective-based semantic search against the Nexus knowledge graph, with LLM-based relevance selection and coverage gap detection. **Build landscape** assembles deduplicated RiskCards with causal chains, typed controls, cross-framework mappings, and governance provenance.
+**Ingest** extracts organizational context, policies, boundary examples, and entity details (stakeholder involvement, AI system attributes, org governance, regulatory references) from documents via LLM (4 passes). **Detect domain** maps the organization to a domain menu. **Map risks** performs perspective-based semantic search against the Nexus knowledge graph, with LLM-based relevance selection and coverage gap detection. **Build landscape** assembles deduplicated RiskCards with VAIR-matched causal chains, typed controls, incident references, cross-framework mappings, and governance provenance. **Enrich chains** uses LLM synthesis to populate causal chains for primary-relevance risks.
 
 ## RiskCard
 
@@ -53,13 +53,18 @@ Requires a local clone of [AI Atlas Nexus](https://github.com/ibm/ai-atlas-nexus
 # Full pipeline
 uv run risk-landscaper run policy.json -o output/ \
   --base-url http://localhost:8000/v1 \
-  --model gemma-3-12b-it \
+  --model gemma-4-26b-a4b-it \
   --nexus-base-dir /path/to/ai-atlas-nexus
 
-# Skip ingest enrichment (faster, less detail)
+# Skip optional passes (faster, less detail)
 uv run risk-landscaper run policy.json -o output/ \
   --base-url ... --model ... --nexus-base-dir ... \
-  --skip-enrichment
+  --skip-enrichment \
+  --skip-entity-enrichment \
+  --skip-chain-enrichment
+
+# Run all policy examples in parallel
+uv run python run_all_policies.py --base-url ... --model ... --nexus-base-dir ... -j 4
 
 # With debug logging
 uv run risk-landscaper run policy.json -o output/ \
@@ -69,17 +74,21 @@ uv run risk-landscaper run policy.json -o output/ \
 
 ### Input Formats
 
-- **Markdown/text** — free-form policy documents (3 LLM passes: context, policies, enrichment)
+- **Markdown/text** — free-form policy documents (4 LLM passes: context, policies, enrichment, entity enrichment)
 - **JSON array** — `[{policy_concept, concept_definition}, ...]` (skips policy extraction pass)
-- **Nexus format** — `{ai_system, risks, risk_controls}` (pre-parsed, no ingest LLM calls)
+- **Nexus format** — `{ai_system, risks, risk_controls}` (pre-parsed, no ingest LLM calls; entity enrichment not available since there is no source document to extract from)
 
 ## Output
 
 ```
 output/
-  policy-profile.json    # System envelope (PolicyProfile)
-  risk-landscape.yaml    # Risk analysis (RiskLandscape with RiskCards)
-  run-report.json        # Execution metadata + token usage
+  policy-profile.json         # System envelope (PolicyProfile)
+  risk-landscape.yaml         # Risk analysis (RiskLandscape with RiskCards)
+  run-report.json             # Execution metadata + token usage
+  ingest-report.html          # Ingest visualization
+  risk-landscape.html         # Risk landscape report with causal chains
+  ai-card.html                # AI Card report
+  run-report.html             # Pipeline execution report with LLM call details
 ```
 
 ## Standards Alignment
@@ -94,8 +103,11 @@ output/
 ## Development
 
 ```bash
-uv run pytest           # 104 tests
+uv run pytest           # 230 tests
+uv run pytest -v        # verbose
 ```
+
+11 policy examples across 6 domains (banking, healthcare, government, corporate, energy, telecom, insurance) in `policy_examples/`. 76 parametrized battery tests exercise format detection, parsing, ingest orchestration, content checks, and domain overrides against all examples.
 
 See [CLAUDE.md](CLAUDE.md) for development conventions, [docs/design.md](docs/design.md) for the full design, and [docs/work-tracker.md](docs/work-tracker.md) for implementation status.
 

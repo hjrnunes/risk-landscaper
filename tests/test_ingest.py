@@ -1,10 +1,20 @@
 import json
 
-from risk_landscaper.models import Policy, RunReport, BoundaryExample
+from risk_landscaper.models import (
+    AiSystem,
+    Organization,
+    Policy,
+    PolicyProfile,
+    RegulatoryReference,
+    RunReport,
+    BoundaryExample,
+    Stakeholder,
+)
 from risk_landscaper.stages.ingest import (
     extract_context,
     extract_policies,
     enrich_policies,
+    enrich_entities,
     parse_json_policies,
     ingest,
     _SlimContext,
@@ -14,6 +24,11 @@ from risk_landscaper.stages.ingest import (
     _SlimEnrichmentList,
     _SlimEnrichment,
     _SlimBoundaryExample,
+    _SlimEntityEnrichment,
+    _SlimOrgDetail,
+    _SlimStakeholderDetail,
+    _SlimAiSystemDetail,
+    _SlimRegulationDetail,
 )
 
 
@@ -322,7 +337,7 @@ def test_ingest_markdown(mock_client, mock_config):
             ]
         ),
     ]
-    result = ingest(SAMPLE_MARKDOWN, "markdown", mock_client, mock_config)
+    result = ingest(SAMPLE_MARKDOWN, "markdown", mock_client, mock_config, skip_entity_enrichment=True)
     assert result.organization.name == "South West Bank"
     assert result.domain == "banking"
     assert len(result.policies) == 1
@@ -367,7 +382,7 @@ def test_ingest_json_array(mock_client, mock_config):
             ]
         ),
     ]
-    result = ingest(SAMPLE_JSON_TEXT, "json_array", mock_client, mock_config)
+    result = ingest(SAMPLE_JSON_TEXT, "json_array", mock_client, mock_config, skip_entity_enrichment=True)
     assert result.organization.name == "South West Bank"
     assert len(result.policies) == 2
     assert result.policies[0].policy_concept == "Fraud"
@@ -393,7 +408,7 @@ def test_ingest_skip_enrichment(mock_client, mock_config):
     report = _make_report()
     result = ingest(
         SAMPLE_JSON_TEXT, "json_array", mock_client, mock_config,
-        skip_enrichment=True, report=report,
+        skip_enrichment=True, skip_entity_enrichment=True, report=report,
     )
     assert len(result.policies) == 2
     assert mock_client.chat.completions.create.call_count == 1
@@ -464,9 +479,284 @@ def test_ingest_domain_override(mock_client, mock_config):
     ]
     result = ingest(
         SAMPLE_JSON_TEXT, "json_array", mock_client, mock_config,
-        skip_enrichment=True,
+        skip_enrichment=True, skip_entity_enrichment=True,
         domain_override="banking",
         organization_override="South West Bank",
     )
     assert result.domain == "banking"
     assert result.organization.name == "South West Bank"
+
+
+# ---------------------------------------------------------------------------
+# Pass 4: Entity enrichment
+# ---------------------------------------------------------------------------
+
+def _make_profile():
+    return PolicyProfile(
+        organization=Organization(name="South West Bank"),
+        domain="banking",
+        purpose=["customer support"],
+        ai_systems=[AiSystem(name="Chatbot"), AiSystem(name="Fraud Engine")],
+        stakeholders=[
+            Stakeholder(name="staff", roles=["airo:AIUser"]),
+            Stakeholder(name="customers", roles=["airo:AISubject"]),
+        ],
+        regulations=[RegulatoryReference(name="FCA"), RegulatoryReference(name="GDPR")],
+        policies=[Policy(policy_concept="Fraud", concept_definition="About fraud")],
+    )
+
+
+def test_enrich_entities_full(mock_client, mock_config):
+    profile = _make_profile()
+    mock_client.chat.completions.create.return_value = _SlimEntityEnrichment(
+        organization=_SlimOrgDetail(
+            governance_roles=["AI Ethics Board", "CTO"],
+            management_system="ISO 42001",
+            certifications=["SOC 2"],
+            delegates=["External Auditor"],
+        ),
+        stakeholders=[
+            _SlimStakeholderDetail(
+                name="staff",
+                involvement="intended",
+                activity="active",
+                awareness="informed",
+                output_control="correct",
+                relationship="internal",
+                interests=["efficiency", "accuracy"],
+            ),
+            _SlimStakeholderDetail(
+                name="customers",
+                involvement="unintended",
+                activity="passive",
+                awareness="uninformed",
+                output_control="cannot_opt_out",
+                relationship="external",
+                interests=["privacy", "fair treatment"],
+            ),
+        ],
+        ai_systems=[
+            _SlimAiSystemDetail(
+                name="Chatbot",
+                modality="text-to-text",
+                techniques=["transformer", "RAG"],
+                automation_level="human-in-the-loop",
+            ),
+            _SlimAiSystemDetail(
+                name="Fraud Engine",
+                modality="tabular-to-classification",
+                techniques=["gradient boosting"],
+                automation_level="fully automated",
+            ),
+        ],
+        regulations=[
+            _SlimRegulationDetail(name="FCA", jurisdiction="United Kingdom", reference="FCA Handbook SYSC 15A"),
+            _SlimRegulationDetail(name="GDPR", jurisdiction="EU", reference="Article 22"),
+        ],
+    )
+
+    result = enrich_entities(SAMPLE_MARKDOWN, profile, mock_client, mock_config)
+
+    assert result.organization.governance_roles == ["AI Ethics Board", "CTO"]
+    assert result.organization.management_system == "ISO 42001"
+    assert result.organization.certifications == ["SOC 2"]
+    assert result.organization.delegates == ["External Auditor"]
+
+    staff = next(s for s in result.stakeholders if s.name == "staff")
+    assert staff.involvement == "intended"
+    assert staff.activity == "active"
+    assert staff.awareness == "informed"
+    assert staff.output_control == "correct"
+    assert staff.relationship == "internal"
+    assert staff.interests == ["efficiency", "accuracy"]
+    assert staff.roles == ["airo:AIUser"]
+
+    customers = next(s for s in result.stakeholders if s.name == "customers")
+    assert customers.involvement == "unintended"
+    assert customers.output_control == "cannot_opt_out"
+    assert customers.relationship == "external"
+
+    chatbot = next(s for s in result.ai_systems if s.name == "Chatbot")
+    assert chatbot.modality == "text-to-text"
+    assert chatbot.techniques == ["transformer", "RAG"]
+    assert chatbot.automation_level == "human-in-the-loop"
+
+    fraud = next(s for s in result.ai_systems if s.name == "Fraud Engine")
+    assert fraud.modality == "tabular-to-classification"
+    assert fraud.automation_level == "fully automated"
+
+    fca = next(r for r in result.regulations if r.name == "FCA")
+    assert fca.jurisdiction == "United Kingdom"
+    assert fca.reference == "FCA Handbook SYSC 15A"
+
+    gdpr = next(r for r in result.regulations if r.name == "GDPR")
+    assert gdpr.jurisdiction == "EU"
+
+
+def test_enrich_entities_empty_strings_become_none(mock_client, mock_config):
+    profile = _make_profile()
+    mock_client.chat.completions.create.return_value = _SlimEntityEnrichment(
+        organization=_SlimOrgDetail(),
+        stakeholders=[
+            _SlimStakeholderDetail(name="staff", involvement="", activity="", awareness=""),
+        ],
+        ai_systems=[
+            _SlimAiSystemDetail(name="Chatbot", modality="", techniques=[], automation_level=""),
+        ],
+        regulations=[
+            _SlimRegulationDetail(name="FCA", jurisdiction="", reference=""),
+        ],
+    )
+
+    result = enrich_entities(SAMPLE_MARKDOWN, profile, mock_client, mock_config)
+
+    staff = next(s for s in result.stakeholders if s.name == "staff")
+    assert staff.involvement is None
+    assert staff.activity is None
+    assert staff.awareness is None
+
+    chatbot = next(s for s in result.ai_systems if s.name == "Chatbot")
+    assert chatbot.modality is None
+    assert chatbot.automation_level is None
+
+    fca = next(r for r in result.regulations if r.name == "FCA")
+    assert fca.jurisdiction is None
+
+    assert result.organization.management_system is None
+
+
+def test_enrich_entities_missing_entity_preserves_original(mock_client, mock_config):
+    profile = _make_profile()
+    mock_client.chat.completions.create.return_value = _SlimEntityEnrichment(
+        organization=_SlimOrgDetail(),
+        stakeholders=[
+            _SlimStakeholderDetail(name="staff", involvement="intended"),
+        ],
+        ai_systems=[],
+        regulations=[],
+    )
+
+    result = enrich_entities(SAMPLE_MARKDOWN, profile, mock_client, mock_config)
+
+    staff = next(s for s in result.stakeholders if s.name == "staff")
+    assert staff.involvement == "intended"
+
+    customers = next(s for s in result.stakeholders if s.name == "customers")
+    assert customers.involvement is None
+    assert customers.roles == ["airo:AISubject"]
+
+    chatbot = next(s for s in result.ai_systems if s.name == "Chatbot")
+    assert chatbot.modality is None
+
+    fca = next(r for r in result.regulations if r.name == "FCA")
+    assert fca.jurisdiction is None
+
+
+def test_enrich_entities_does_not_mutate_input(mock_client, mock_config):
+    profile = _make_profile()
+    original_org = profile.organization
+
+    mock_client.chat.completions.create.return_value = _SlimEntityEnrichment(
+        organization=_SlimOrgDetail(governance_roles=["CTO"]),
+        stakeholders=[
+            _SlimStakeholderDetail(name="staff", involvement="intended"),
+        ],
+        ai_systems=[],
+        regulations=[],
+    )
+
+    result = enrich_entities(SAMPLE_MARKDOWN, profile, mock_client, mock_config)
+
+    assert original_org.governance_roles == []
+    assert result.organization.governance_roles == ["CTO"]
+
+    original_staff = next(s for s in profile.stakeholders if s.name == "staff")
+    assert original_staff.involvement is None
+
+
+def test_enrich_entities_emits_report(mock_client, mock_config):
+    profile = _make_profile()
+    mock_client.chat.completions.create.return_value = _SlimEntityEnrichment(
+        organization=_SlimOrgDetail(governance_roles=["Board"]),
+        stakeholders=[
+            _SlimStakeholderDetail(name="staff", involvement="intended"),
+        ],
+        ai_systems=[
+            _SlimAiSystemDetail(name="Chatbot", modality="text-to-text"),
+        ],
+        regulations=[
+            _SlimRegulationDetail(name="FCA", jurisdiction="UK"),
+        ],
+    )
+
+    report = _make_report()
+    enrich_entities(SAMPLE_MARKDOWN, profile, mock_client, mock_config, report=report)
+
+    entity_events = [e for e in report.events if e["event"] == "entities_enriched"]
+    assert len(entity_events) == 1
+    assert entity_events[0]["stakeholders_enriched"] == 1
+    assert entity_events[0]["systems_enriched"] == 1
+    assert entity_events[0]["regulations_enriched"] == 1
+    assert entity_events[0]["org_enriched"] is True
+
+
+def test_ingest_with_entity_enrichment(mock_client, mock_config):
+    mock_client.chat.completions.create.side_effect = [
+        # Pass 1: context
+        _SlimContext(
+            organization="South West Bank",
+            domain="banking",
+            purpose=["support"],
+            ai_systems=["Chatbot"],
+            ai_users=["staff"],
+            ai_subjects=["customers"],
+            governing_regulations=["FCA"],
+            named_entities=[],
+        ),
+        # Pass 2: policies
+        _SlimPolicyList(
+            policies=[
+                _SlimPolicy(policy_concept="Fraud", concept_definition="About fraud"),
+            ]
+        ),
+        # Pass 3: enrichment
+        _SlimEnrichmentList(
+            enrichments=[
+                _SlimEnrichment(
+                    policy_concept="Fraud",
+                    boundary_examples=[],
+                    acceptable_uses=[],
+                    risk_controls=[],
+                    human_involvement="",
+                ),
+            ]
+        ),
+        # Pass 4: entity enrichment
+        _SlimEntityEnrichment(
+            organization=_SlimOrgDetail(governance_roles=["CTO"]),
+            stakeholders=[
+                _SlimStakeholderDetail(name="staff", involvement="intended", activity="active"),
+                _SlimStakeholderDetail(name="customers", involvement="unintended", activity="passive"),
+            ],
+            ai_systems=[
+                _SlimAiSystemDetail(name="Chatbot", modality="text-to-text", automation_level="advisory"),
+            ],
+            regulations=[
+                _SlimRegulationDetail(name="FCA", jurisdiction="United Kingdom"),
+            ],
+        ),
+    ]
+    result = ingest(SAMPLE_MARKDOWN, "markdown", mock_client, mock_config)
+    assert mock_client.chat.completions.create.call_count == 4
+
+    assert result.organization.governance_roles == ["CTO"]
+
+    staff = next(s for s in result.stakeholders if s.name == "staff")
+    assert staff.involvement == "intended"
+    assert staff.activity == "active"
+
+    chatbot = next(s for s in result.ai_systems if s.name == "Chatbot")
+    assert chatbot.modality == "text-to-text"
+
+    fca = next(r for r in result.regulations if r.name == "FCA")
+    assert fca.jurisdiction == "United Kingdom"

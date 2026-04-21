@@ -31,6 +31,7 @@ AIRO AI Card alignment — evolved the data model and pipeline to produce govern
   - LLM-assisted causal chain synthesis for primary-relevance risks (new `enrich_chains` pipeline stage). Skippable with `--skip-chain-enrichment`.
 - **Causal chain in reports** — risk landscape report and AI card now render the full causal chain per risk: risk sources (with VAIR source type), consequences, impacts (with area and severity), typed controls (with targets), and linked incidents (with status and source URI). Collapsed preview badges show enrichment counts at a glance. New "Causal Chain Coverage" summary section in the risk landscape report.
 - **Run report event log** — full LLM call capture (prompts, responses, duration) in the event log. Stage timing for all pipeline stages. Rewritten run report template with per-stage token usage breakdown, collapsible LLM call inspection, and event rendering for all risk-landscaper stages (ingest, detect_domain, map_risks, build_landscape, enrich_chains).
+- **Entity enrichment (ingest pass 4)** — dedicated LLM pass enriches extracted entities with AIRO-grounded attributes. Stakeholders gain involvement, activity, awareness, output_control, relationship, and interests. AI systems gain modality, techniques, and automation_level. Organization gains governance_roles, management_system, certifications, and delegates. Regulatory references gain jurisdiction and reference. Skippable with `--skip-entity-enrichment`.
 
 ### Changed
 

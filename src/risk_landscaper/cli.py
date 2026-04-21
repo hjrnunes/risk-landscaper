@@ -72,6 +72,7 @@ def run(
     nexus_chroma_dir: Path = typer.Option(Path(".chroma"), "--nexus-chroma-dir", envvar="NEXUS_CHROMA_DIR", help="Nexus ChromaDB directory"),
     debug_dir: Path = typer.Option(None, "--debug", help="Directory for per-call debug logs"),
     skip_enrichment: bool = typer.Option(False, "--skip-enrichment", help="Skip ingest enrichment pass"),
+    skip_entity_enrichment: bool = typer.Option(False, "--skip-entity-enrichment", help="Skip entity enrichment pass"),
     max_concurrent: int = typer.Option(1, "--max-concurrent", help="Max parallel LLM calls in map_risks"),
     input_format: str = typer.Option(None, "--input-format", help="Input format: markdown or json_array (auto-detected if omitted)"),
     skip_chain_enrichment: bool = typer.Option(False, "--skip-chain-enrichment", help="Skip LLM causal chain enrichment"),
@@ -126,6 +127,7 @@ def run(
         profile = ingest(
             text, fmt, client, config,
             skip_enrichment=skip_enrichment,
+            skip_entity_enrichment=skip_entity_enrichment,
             report=report,
         )
         _stage_event("ingest", "stage_completed", t_stage)
