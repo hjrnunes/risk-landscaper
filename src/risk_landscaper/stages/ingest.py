@@ -8,6 +8,7 @@ from risk_landscaper.llm import LLMConfig
 from risk_landscaper.models import (
     BoundaryExample,
     AiSystem,
+    Organization,
     Policy,
     PolicyDecomposition,
     PolicyProfile,
@@ -309,7 +310,7 @@ def _build_document(context: _SlimContext, policies: list[Policy]) -> PolicyProf
     for ne in context.named_entities:
         stakeholders.append(Stakeholder(name=ne.name, roles=[ne.role]))
     return PolicyProfile(
-        organization=Stakeholder(name=context.organization) if context.organization else None,
+        organization=Organization(name=context.organization) if context.organization else None,
         domain=context.domain,
         purpose=context.purpose,
         ai_systems=[AiSystem(name=s) for s in context.ai_systems],

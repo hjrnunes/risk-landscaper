@@ -3,7 +3,7 @@ from risk_landscaper.models import (
     PolicyProfile,
     PolicyRiskMapping,
     PolicySourceRef,
-    RiskDetail,
+    RiskCard,
     RiskLandscape,
     KnowledgeBaseRef,
     WeakMatch,
@@ -52,7 +52,7 @@ def build_risk_landscape(
 
     # Build normalized risk registry (deduplicated)
     seen_risk_ids: set[str] = set()
-    risks: list[RiskDetail] = []
+    risks: list[RiskCard] = []
     framework_counts: dict[str, int] = {}
     weak_matches: list[WeakMatch] = []
 
@@ -72,7 +72,7 @@ def build_risk_landscape(
 
             details = risk_details_cache.get(rm.risk_id, {})
             framework = _detect_framework(rm.risk_id)
-            risks.append(RiskDetail(
+            risks.append(RiskCard(
                 risk_id=rm.risk_id,
                 risk_name=details.get("name") or rm.risk_name or rm.risk_id,
                 risk_description=details.get("description") or "",

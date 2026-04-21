@@ -5,6 +5,7 @@ See docs/superpowers/specs/2026-04-16-uga-ort-bridge-design.md
 """
 from risk_landscaper.models import (
     AiSystem,
+    Organization,
     Policy,
     PolicyProfile,
     Stakeholder,
@@ -72,7 +73,7 @@ def nexus_to_policy_profile(payload: dict) -> PolicyProfile:
     if dev:
         org_name = dev if isinstance(dev, str) else dev.get("name", "")
         if org_name:
-            organization = Stakeholder(name=org_name, roles=["airo:AIDeveloper"])
+            organization = Organization(name=org_name)
 
     ai_systems = []
     if ai_system_data and ai_system_data.get("name"):

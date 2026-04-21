@@ -1,7 +1,7 @@
 import pytest
 from risk_landscaper.models import (
-    RiskLandscape, RiskDetail, PolicyRiskMapping, RiskMatch,
-    PolicySourceRef, PolicyProfile, Stakeholder,
+    RiskLandscape, RiskCard, PolicyRiskMapping, RiskMatch,
+    PolicySourceRef, PolicyProfile, Organization,
 )
 
 
@@ -166,7 +166,7 @@ def test_build_risk_landscape_with_policy_source():
     from risk_landscaper.stages.build_landscape import build_risk_landscape
 
     policy_profile = PolicyProfile(
-        organization=Stakeholder(name="South West Bank"),
+        organization=Organization(name="South West Bank"),
         domain="banking",
         policies=[],
     )

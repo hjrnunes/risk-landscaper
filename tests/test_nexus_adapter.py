@@ -71,7 +71,6 @@ def test_nexus_to_policy_profile_basic():
     profile = nexus_to_policy_profile(payload)
     assert profile.domain == "healthcare"
     assert profile.organization.name == "HealthCo"
-    assert profile.organization.roles == ["airo:AIDeveloper"]
     assert len(profile.ai_systems) == 1
     assert profile.ai_systems[0].name == "Medical Triage Bot"
     assert profile.ai_systems[0].risk_level == "high"

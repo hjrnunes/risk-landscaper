@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 from dataclasses import dataclass, field
 from pydantic import BaseModel, field_validator, model_validator
 
@@ -16,11 +16,25 @@ class NamedEntity(BaseModel):
 # --- AIRO-grounded envelope types ---
 
 
+class Organization(BaseModel):
+    name: str
+    description: str | None = None
+    governance_roles: list[str] = []
+    management_system: str | None = None
+    certifications: list[str] = []
+    delegates: list[str] = []
+
+
 class Stakeholder(BaseModel):
     name: str
-    roles: list[str] = []        # CURIEs: "airo:AIProvider", "airo:AIDeployer",
-                                  #         "airo:AIUser", "airo:AISubject"
+    roles: list[str] = []
     description: str | None = None
+    involvement: Literal["intended", "unintended"] | None = None
+    activity: Literal["active", "passive"] | None = None
+    awareness: Literal["informed", "uninformed"] | None = None
+    output_control: Literal["challenge", "correct", "cannot_opt_out"] | None = None
+    relationship: Literal["internal", "external"] | None = None
+    interests: list[str] = []
 
 
 class AiSystem(BaseModel):
@@ -28,40 +42,47 @@ class AiSystem(BaseModel):
     description: str | None = None
     purpose: list[str] = []
     risk_level: Literal["high", "limited", "minimal", "unclassified"] | None = None
+    modality: str | None = None
+    techniques: list[str] = []
+    automation_level: str | None = None
+    serves_stakeholders: list[str] = []
+    assets: list[str] = []
 
 
-# Backward-compatible alias
 GovernedSystem = AiSystem
 
 
 class RegulatoryReference(BaseModel):
     name: str
     jurisdiction: str | None = None
-    reference: str | None = None   # URI or document identifier
+    reference: str | None = None
 
 
 # --- Per-policy decomposition ---
 
 
 class PolicyDecomposition(BaseModel):
-    agent: str | None = None       # Who acts (CURIE or label)
-    activity: str | None = None    # What is done
-    entity: str | None = None      # What is acted upon
+    agent: str | None = None
+    activity: str | None = None
+    entity: str | None = None
 
 
 class Policy(BaseModel):
     policy_concept: str
     concept_definition: str
+    governance_function: Literal["direct", "evaluate", "monitor"] | None = None
     boundary_examples: list[BoundaryExample] = []
     acceptable_uses: list[str] = []
     risk_controls: list[str] = []
     human_involvement: str | None = None
+    affects_stakeholders: list[str] = []
+    applies_to_systems: list[str] = []
     decomposition: PolicyDecomposition | None = None
 
 
 class PolicyProfile(BaseModel):
     airo_version: str = "0.2"
-    organization: Stakeholder | None = None
+    organization: Organization | None = None
     domain: str | None = None
     purpose: list[str] = []
     ai_systems: list[AiSystem] = []
@@ -73,7 +94,9 @@ class PolicyProfile(BaseModel):
     @classmethod
     def _coerce_organization(cls, v):
         if isinstance(v, str):
-            return Stakeholder(name=v) if v else None
+            return Organization(name=v) if v else None
+        if isinstance(v, dict) and "roles" in v:
+            return Organization(name=v.get("name", ""))
         return v
 
     @model_validator(mode="before")
@@ -82,6 +105,63 @@ class PolicyProfile(BaseModel):
         if isinstance(data, dict) and "governed_systems" in data and "ai_systems" not in data:
             data["ai_systems"] = data.pop("governed_systems")
         return data
+
+
+# --- Causal chain types ---
+
+
+class RiskSource(BaseModel):
+    description: str
+    source_type: str | None = None
+    likelihood: str | None = None
+    exploits_vulnerability: str | None = None
+
+
+class RiskConsequence(BaseModel):
+    description: str
+    likelihood: str | None = None
+    severity: str | None = None
+
+
+class RiskImpact(BaseModel):
+    description: str
+    severity: str | None = None
+    area: str | None = None
+    affected_stakeholders: list[str] = []
+    harm_type: str | None = None
+
+
+class RiskControl(BaseModel):
+    description: str
+    control_type: Literal["detect", "evaluate", "mitigate", "eliminate"] | None = None
+    targets: str | None = None
+
+
+class RiskIncidentRef(BaseModel):
+    name: str
+    description: str | None = None
+    source_uri: str | None = None
+    status: str | None = None
+
+
+class EvaluationRef(BaseModel):
+    eval_id: str
+    eval_type: str | None = None
+    timestamp: str | None = None
+    summary: str | None = None
+    metrics: dict[str, Any] = {}
+    source_uri: str | None = None
+
+
+class GovernanceProvenance(BaseModel):
+    produced_by: str | None = None
+    governance_function: str | None = None
+    aims_activities: list[str] = []
+    reviewed_by: list[str] = []
+    review_status: str | None = None
+
+
+# --- Risk matching ---
 
 
 class RiskMatch(BaseModel):
@@ -111,14 +191,42 @@ class KnowledgeBaseRef(BaseModel):
     indexed_at: str = ""
 
 
-class RiskDetail(BaseModel):
+# --- Risk card ---
+
+
+class RiskCard(BaseModel):
     risk_id: str
     risk_name: str
     risk_description: str | None = ""
     risk_concern: str | None = ""
     risk_framework: str | None = ""
     cross_mappings: list[dict] = []
+    risk_type: str | None = None
+    descriptors: list[str] = []
+
+    risk_sources: list[RiskSource] = []
+    consequences: list[RiskConsequence] = []
+    impacts: list[RiskImpact] = []
+
+    trustworthy_characteristics: list[str] = []
+    aims_activities: list[str] = []
+
+    controls: list[RiskControl] = []
+
+    materialization_conditions: str | None = None
+
+    incidents: list[RiskIncidentRef] = []
+
+    evaluations: list[EvaluationRef] = []
+
+    risk_level: str | None = None
+
+    related_policies: list[str] = []
+
     related_actions: list[str] = []
+
+
+RiskDetail = RiskCard
 
 
 class WeakMatch(BaseModel):
@@ -138,18 +246,19 @@ class CoverageGap(BaseModel):
 
 
 class RiskLandscape(BaseModel):
-    version: str = "0.1"
+    version: str = "0.2"
     model: str = ""
     timestamp: str = ""
     run_slug: str = ""
     selected_domains: list[str] = []
     policy_source: PolicySourceRef | None = None
     knowledge_base: KnowledgeBaseRef | None = None
-    risks: list[RiskDetail] = []
+    risks: list[RiskCard] = []
     policy_mappings: list[PolicyRiskMapping] = []
     framework_coverage: dict[str, int] = {}
     weak_matches: list[WeakMatch] = []
     coverage_gaps: list[CoverageGap] = []
+    provenance: GovernanceProvenance | None = None
 
 
 @dataclass
