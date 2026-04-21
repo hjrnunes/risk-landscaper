@@ -2,8 +2,9 @@ import pytest
 from risk_landscaper.models import (
     RiskLandscape, RiskCard, PolicyRiskMapping, RiskMatch,
     PolicySourceRef, PolicyProfile, Organization, RiskSource,
+    RiskIncidentRef,
 )
-from risk_landscaper.stages.build_landscape import _infer_control_type, _infer_control_targets, _infer_source_type
+from risk_landscaper.stages.build_landscape import _infer_control_type, _infer_control_targets, _infer_source_type, _incidents_to_refs
 
 
 def test_build_risk_landscape_basic():
@@ -449,3 +450,74 @@ def test_build_landscape_populates_baseline_risk_source():
     assert len(card.risk_sources) == 1
     assert card.risk_sources[0].source_type == "model"
     assert card.risk_sources[0].description == "Discriminatory outputs affecting users"
+
+
+def test_incidents_to_refs_basic():
+    raw = [
+        {
+            "name": "AI-based Biological Attacks",
+            "description": "LLMs could help plan biological attacks",
+            "source_uri": "https://example.com/incident",
+            "hasStatus": "Concluded",
+        },
+    ]
+    refs = _incidents_to_refs(raw)
+    assert len(refs) == 1
+    assert refs[0].name == "AI-based Biological Attacks"
+    assert refs[0].description == "LLMs could help plan biological attacks"
+    assert refs[0].source_uri == "https://example.com/incident"
+    assert refs[0].status == "concluded"
+
+
+def test_incidents_to_refs_missing_fields():
+    raw = [{"name": "Minimal Incident"}]
+    refs = _incidents_to_refs(raw)
+    assert len(refs) == 1
+    assert refs[0].name == "Minimal Incident"
+    assert refs[0].description is None
+    assert refs[0].source_uri is None
+    assert refs[0].status is None
+
+
+def test_incidents_to_refs_empty():
+    assert _incidents_to_refs([]) == []
+    assert _incidents_to_refs(None) == []
+
+
+def test_build_landscape_with_incidents():
+    from risk_landscaper.stages.build_landscape import build_risk_landscape
+
+    mappings = [
+        PolicyRiskMapping(
+            policy_concept="Safety",
+            matched_risks=[
+                RiskMatch(risk_id="atlas-dangerous-use", risk_name="Dangerous use",
+                          relevance="primary", justification="test"),
+            ],
+        ),
+    ]
+    risk_details_cache = {
+        "atlas-dangerous-use": {
+            "id": "atlas-dangerous-use", "name": "Dangerous use",
+            "description": "AI used for dangerous purposes",
+        },
+    }
+    risk_incidents = {
+        "atlas-dangerous-use": [
+            {
+                "name": "Bioweapon planning",
+                "description": "LLM assisted in planning biological attack",
+                "source_uri": "https://example.com",
+                "hasStatus": "Ongoing",
+            },
+        ],
+    }
+    landscape = build_risk_landscape(
+        mappings=mappings, risk_details_cache=risk_details_cache,
+        risk_incidents=risk_incidents,
+        model="test", run_slug="test", timestamp="t",
+    )
+    card = landscape.risks[0]
+    assert len(card.incidents) == 1
+    assert card.incidents[0].name == "Bioweapon planning"
+    assert card.incidents[0].status == "ongoing"

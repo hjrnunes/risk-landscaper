@@ -6,6 +6,7 @@ from risk_landscaper.models import (
     PolicySourceRef,
     RiskCard,
     RiskControl,
+    RiskIncidentRef,
     RiskLandscape,
     RiskSource,
     KnowledgeBaseRef,
@@ -105,11 +106,38 @@ def _collect_related_policies(
     ]
 
 
+_STATUS_MAP = {
+    "Ongoing": "ongoing",
+    "Concluded": "concluded",
+    "Mitigated": "mitigated",
+    "Halted": "halted",
+    "NearMiss": "near_miss",
+}
+
+
+def _incidents_to_refs(raw_incidents: list[dict] | None) -> list[RiskIncidentRef]:
+    if not raw_incidents:
+        return []
+    return [
+        RiskIncidentRef(
+            name=inc.get("name", ""),
+            description=inc.get("description"),
+            source_uri=inc.get("source_uri"),
+            status=_STATUS_MAP.get(
+                inc.get("hasStatus", ""),
+                inc.get("hasStatus", "").lower() if inc.get("hasStatus") else None,
+            ),
+        )
+        for inc in raw_incidents
+    ]
+
+
 def build_risk_landscape(
     mappings: list[PolicyRiskMapping],
     risk_details_cache: dict[str, dict],
     related_risks: dict[str, list[dict]] | None = None,
     risk_actions: dict[str, list[str]] | None = None,
+    risk_incidents: dict[str, list[dict]] | None = None,
     selected_domains: list[str] | None = None,
     model: str = "",
     run_slug: str = "",
@@ -120,6 +148,7 @@ def build_risk_landscape(
 ) -> RiskLandscape:
     related_risks = related_risks or {}
     risk_actions = risk_actions or {}
+    risk_incidents = risk_incidents or {}
 
     seen_risk_ids: set[str] = set()
     risks: list[RiskCard] = []
@@ -158,6 +187,8 @@ def build_risk_landscape(
                 else []
             )
 
+            incidents = _incidents_to_refs(risk_incidents.get(rm.risk_id))
+
             risks.append(RiskCard(
                 risk_id=rm.risk_id,
                 risk_name=details.get("name") or rm.risk_name or rm.risk_id,
@@ -171,6 +202,7 @@ def build_risk_landscape(
                 controls=_actions_to_controls(actions),
                 related_policies=_collect_related_policies(rm.risk_id, mappings),
                 related_actions=actions,
+                incidents=incidents,
             ))
 
             framework_counts[framework] = framework_counts.get(framework, 0) + 1

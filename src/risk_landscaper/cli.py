@@ -154,6 +154,26 @@ def run(
     if coverage_gaps:
         typer.echo(f"  {len(coverage_gaps)} coverage gap(s) detected")
 
+    # --- Fetch incidents for matched risks ---
+    from ai_atlas_nexus import AIAtlasNexus
+    nexus = AIAtlasNexus(base_dir=nexus_base_dir)
+    risk_incidents: dict[str, list[dict]] = {}
+    for rid in risk_details:
+        incidents = nexus.get_related_risk_incidents(risk_id=rid)
+        if incidents:
+            risk_incidents[rid] = [
+                {
+                    "name": inc.name,
+                    "description": inc.description,
+                    "source_uri": getattr(inc, "source_uri", None),
+                    "hasStatus": getattr(inc, "hasStatus", None),
+                }
+                for inc in incidents
+            ]
+    if risk_incidents:
+        total_inc = sum(len(v) for v in risk_incidents.values())
+        typer.echo(f"  {total_inc} incident(s) linked to {len(risk_incidents)} risk(s)")
+
     # --- Stage 4: Build landscape ---
     from risk_landscaper.stages.build_landscape import build_risk_landscape
 
@@ -162,6 +182,7 @@ def run(
         risk_details_cache=risk_details,
         related_risks=related_risks,
         risk_actions=risk_actions,
+        risk_incidents=risk_incidents,
         selected_domains=selected_domains,
         model=config.model,
         run_slug=policy_file.stem,
