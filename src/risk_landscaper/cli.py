@@ -73,8 +73,9 @@ def run(
     skip_enrichment: bool = typer.Option(False, "--skip-enrichment", help="Skip ingest enrichment pass"),
     max_concurrent: int = typer.Option(1, "--max-concurrent", help="Max parallel LLM calls in map_risks"),
     input_format: str = typer.Option(None, "--input-format", help="Input format: markdown or json_array (auto-detected if omitted)"),
+    skip_chain_enrichment: bool = typer.Option(False, "--skip-chain-enrichment", help="Skip LLM causal chain enrichment"),
 ):
-    """Run the risk landscaper pipeline: ingest -> detect_domain -> map_risks -> build_landscape."""
+    """Run the risk landscaper pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains."""
     if not policy_file.exists():
         typer.echo(f"Error: {policy_file} does not exist", err=True)
         raise typer.Exit(1)
@@ -191,6 +192,20 @@ def run(
         policy_profile=profile,
     )
     report.stages_completed.append("build_landscape")
+
+    # --- Stage 5: Enrich causal chains ---
+    if not skip_chain_enrichment:
+        from risk_landscaper.stages.enrich_chains import enrich_chains
+        primary_count = sum(
+            1 for m in mappings for rm in m.matched_risks if rm.relevance == "primary"
+        )
+        typer.echo(f"Enriching causal chains for {primary_count} primary-relevance risks...")
+        enrich_chains(landscape, profile.policies, client, config, report=report)
+        report.stages_completed.append("enrich_chains")
+        enriched = sum(1 for r in landscape.risks if r.consequences)
+        typer.echo(f"  {enriched} risk(s) enriched with causal chains")
+    else:
+        typer.echo("Skipping causal chain enrichment (--skip-chain-enrichment)")
 
     landscape_path = output / "risk-landscape.yaml"
     landscape_path.write_text(yaml.dump(
