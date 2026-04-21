@@ -1,0 +1,242 @@
+# Risk Landscaper Design — AIRO AI Card Alignment
+
+This document captures the design for evolving the risk landscaper into an AIRO-aligned AI risk documentation tool. Source material: Obsidian note "Risk Landscape to AI Card Alignment".
+
+## Vision
+
+The risk landscaper produces structured risk artifacts that multiple consumers can use. The red-team pipeline is one consumer, not the primary driver. The tool supports risk-use case capturing, tying in governance, regulation, and data interop with model cards, guardrails metadata, etc.
+
+## Standards Stack
+
+The causal chain follows an established standards hierarchy:
+
+1. **ISO 31000/31073** — conceptual model: RiskSource -> (exploits Vulnerability) -> Risk Event -> Consequence -> Impact
+2. **AIRO** (Golpayegani, Pandit, Lewis) — OWL formalisation with four classes under `airo:RiskConcept`:
+   - `RiskSource --isRiskSourceFor--> Risk --hasConsequence--> Consequence --hasImpact--> Impact`
+   - `hasLikelihood` on any RiskConcept, `hasSeverity` on Consequence/Impact
+   - Controls via `modifiesRiskConcept` with sub-properties: detects, eliminates, mitigates
+3. **DPV risk extension** (W3C DPVCG) — base vocabulary AIRO imports; adds RiskSource, Threat, Vulnerability, Incident, risk matrices
+4. **VAIR** (Vocabulary of AI Risks) — AI-specific subtypes for chain nodes (data/model/attack source types, bias/discrimination consequences, wellbeing/rights impacts)
+
+## Output Architecture
+
+```
+output/
+  policy-profile.json     <- system envelope (PolicyProfile)
+  risk-landscape.yaml     <- risk analysis (RiskLandscape with RiskCards)
+  run-report.json         <- execution metadata
+```
+
+Together, `policy-profile.json` + `risk-landscape.yaml` constitute a complete AI Card.
+
+## Data Model (v0.2)
+
+### Envelope Types
+
+**Organization** — the entity disclosing trustworthy characteristics. Replaces Stakeholder for the `organization` field. Distinguished from Stakeholders (agents toward whom characteristics are exhibited).
+
+```
+Organization
+  name, description
+  governance_roles: list[str]     # governing_body, top_management, ai_team
+  management_system: str          # ISO/IEC 42001, internal, etc.
+  certifications: list[str]
+  delegates: list[str]            # actsOnBehalfOf
+```
+
+**Stakeholder** — with AIRO involvement modeling and Lewis linkage:
+
+```
+Stakeholder
+  name, roles, description
+  involvement: intended | unintended
+  activity: active | passive
+  awareness: informed | uninformed
+  output_control: challenge | correct | cannot_opt_out
+  relationship: internal | external
+  interests: list[str]            # trustworthy characteristics they care about
+```
+
+**Policy** — with governance function (Lewis et al ISO/IEC 38500):
+
+```
+Policy
+  policy_concept, concept_definition
+  governance_function: direct | evaluate | monitor
+  boundary_examples, acceptable_uses, risk_controls, human_involvement
+  affects_stakeholders, applies_to_systems
+  decomposition: PolicyDecomposition (agent/activity/entity)
+```
+
+**AiSystem** — with model card interop and Lewis asset modeling:
+
+```
+AiSystem
+  name, description, purpose, risk_level
+  modality: str                   # software, embedded, service
+  techniques: list[str]           # deep_learning, statistical_model, etc.
+  automation_level: str           # full, partial, human_in_loop
+  serves_stakeholders: list[str]
+  assets: list[str]
+```
+
+### Causal Chain Types
+
+```
+RiskSource
+  description, source_type (VAIR), likelihood, exploits_vulnerability
+
+RiskConsequence
+  description, likelihood, severity
+
+RiskImpact
+  description, severity
+  area: str           # AIRO AreaOfImpact: health, safety, fundamental_rights, etc.
+  affected_stakeholders: list[str]
+  harm_type: str      # Shelby+: representational, allocative, quality_of_service, etc.
+
+RiskControl
+  description
+  control_type: detect | evaluate | mitigate | eliminate
+  targets: str        # chain level: source, risk, consequence, impact
+```
+
+### Evidence and Governance Types
+
+```
+RiskIncidentRef
+  name, description, source_uri
+  status: ongoing | concluded | mitigated | halted | near_miss
+
+EvaluationRef
+  eval_id, eval_type (lm-eval, garak, manual, monitoring)
+  timestamp, summary, metrics: dict, source_uri
+
+GovernanceProvenance
+  produced_by, governance_function
+  aims_activities: list[str]      # which AIMS activities this satisfies
+  reviewed_by: list[str]
+  review_status: draft | reviewed | approved
+```
+
+### RiskCard
+
+Replaces RiskDetail. Carries the full AIRO causal chain, typed controls, evidence, governance metadata, and policy links. `RiskDetail` is a backward-compat alias.
+
+```
+RiskCard
+  # Identity
+  risk_id, risk_name, risk_description, risk_concern
+  risk_framework, cross_mappings
+  risk_type                       # input, output, training-data, inference, non-technical, agentic
+  descriptors                     # "amplified by generative AI", etc.
+
+  # Causal chain
+  risk_sources: list[RiskSource]
+  consequences: list[RiskConsequence]
+  impacts: list[RiskImpact]
+
+  # Governance
+  trustworthy_characteristics     # ISO/IEC 24028: safety, security, privacy, fairness, etc.
+  aims_activities                 # Lewis et al AIMS mapping: aimsA6, aimsA13, etc.
+
+  # Controls
+  controls: list[RiskControl]
+
+  # Materialization
+  materialization_conditions: str
+
+  # Evidence
+  incidents: list[RiskIncidentRef]
+  evaluations: list[EvaluationRef]
+
+  # Assessment
+  risk_level: str                 # very_low...very_high
+
+  # Links
+  related_policies: list[str]
+  related_actions: list[str]      # backward compat
+```
+
+### RiskLandscape (v0.2)
+
+`risks: list[RiskCard]` replaces `list[RiskDetail]`. Adds `provenance: GovernanceProvenance`. All other fields unchanged.
+
+## Sourcing Strategy for Chain Data
+
+Three layers, progressively richer:
+
+1. **Nexus lookup (free)** — `related_actions` -> controls, incidents -> incidents, `risk_type` -> card field, `descriptor` -> descriptors. Available today.
+2. **VAIR vocabulary matching (cheap)** — map risk descriptions against VAIR enumerated source/consequence/impact types. Structured labels without LLM calls.
+3. **LLM-assisted synthesis (expensive)** — given risk description + concern + policy context, reason about risk sources, consequences, impacts, materialization conditions. This is where Nexus narrative signal gets structured.
+
+A card is valid with just identity + policy links. The chain enriches it progressively.
+
+## Governance Alignment
+
+### Three Governance Layers
+
+1. **Lewis et al** — ontological foundation: Activity/Entity/Agent, governance relationships, AIMS mappings
+2. **UGA** (IBM) — governance workflow: intent -> questionnaire -> risk -> model selection -> guardrails
+3. **GAF-Guard** (IBM) — agentic runtime: distributes UGA workflow across agents with tool access
+
+The RiskLandscape is the governance artifact, not a governance system. It must be rich enough for automated consumers, machine-readable, provenance-aware, and evaluable.
+
+### AIMS Activity Mapping
+
+| AIMS Activity | Our Stack |
+|---|---|
+| A2: Stakeholder identification | `PolicyProfile.stakeholders` with AIRO involvement |
+| A4: AI policy establishment | `PolicyProfile.policies` |
+| A6: Risk assessment | `RiskLandscape` + `RiskCard` (core output) |
+| A8: Controls implementation | `RiskCard.controls` |
+| A9: Performance evaluation | `RiskCard.evaluations` (EvaluationRef) |
+
+### Policy governance_function -> Tool Selection
+
+| governance_function | Red-team pipeline | Guardrails | GAF-Guard |
+|---|---|---|---|
+| `direct` | Adversarial prompts testing boundaries | Rule definition | Pre-deployment risk gate |
+| `evaluate` | lm-eval tasks with pass/fail criteria | Threshold config | Assessment questionnaire |
+| `monitor` | Drift detection probes | Alert trigger | Post-deployment monitoring |
+
+## Interoperability
+
+### RiskCard as Interop Hub
+
+The RiskCard is richer than all its projection targets. Data flows outward from it.
+
+**Projection 1: RiskCard -> Model Card `considerations`**
+
+| RiskCard field | Model Card target |
+|---|---|
+| risk_name + risk_concern | ethical_considerations[].name |
+| controls[].description | ethical_considerations[].mitigation_strategy |
+| impacts[].affected_stakeholders | considerations.users[] |
+| materialization_conditions | use_cases[] or out_of_scope_uses[] |
+| coverage gaps | considerations.limitations[] |
+
+The better path: a `RiskLandscapeReference` in the model card schema (like the D4D `DatasetReference` pattern).
+
+**Projection 2: RiskCard -> lm-eval task generation**
+
+| RiskCard field | lm-eval config field |
+|---|---|
+| risk_type | task type selection |
+| materialization_conditions | doc_to_text prompt template |
+| impacts[].harm_type | metric_list selection |
+| related_policies | evaluation criteria (pass/fail) |
+| incidents[].description | few-shot examples / seeds |
+
+**Projection 3: lm-eval results -> EvaluationRef**
+
+Results flow back to the RiskCard that motivated the test. `eval_id` is the join key.
+
+## Backward Compatibility
+
+- `RiskDetail = RiskCard` alias
+- `related_actions` preserved on RiskCard
+- `_coerce_organization` migrates legacy Stakeholder-shaped dicts to Organization
+- `_migrate_governed_systems` handles old `governed_systems` field name
+- All new fields default to `None`/`[]` so existing serialized data parses without changes
+- Refiner downstream reads risk-landscape.yaml and ignores unknown fields via Pydantic defaults
