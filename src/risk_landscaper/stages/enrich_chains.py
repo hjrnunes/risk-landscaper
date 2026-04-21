@@ -1,4 +1,5 @@
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Literal
 
@@ -131,6 +132,7 @@ def _enrich_single_risk(
         "source_type_hint": source_type_hint or "",
         "policies": policy_context,
     })
+    t0 = time.monotonic()
     chain = client.chat.completions.create(
         model=config.model,
         response_model=_CausalChain,
@@ -139,9 +141,10 @@ def _enrich_single_risk(
         max_retries=config.max_retries,
         max_tokens=config.max_tokens,
     )
+    duration_ms = (time.monotonic() - t0) * 1000
     debug.log_call("enrich_chains", messages, chain, context={
         "risk_id": card.risk_id,
-    })
+    }, report=report, duration_ms=duration_ms)
     _merge_chain(card, chain)
 
     if report:

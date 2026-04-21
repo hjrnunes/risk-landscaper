@@ -10,278 +10,412 @@
     [x-cloak] { display: none !important; }
     .tip {
       position: relative;
-      display: inline-block;
       cursor: help;
+      border-bottom: 1px dotted #9ca3af;
     }
-    .tip .tip-icon {
-      display: inline-block;
-      width: 1rem;
-      height: 1rem;
-      border-radius: 50%;
-      background: #6b7280;
-      color: white;
-      text-align: center;
-      font-size: 0.75rem;
-      line-height: 1rem;
-    }
-    .tip:hover::after {
+    .tip::after {
       content: attr(data-tip);
       position: absolute;
-      bottom: 100%;
+      bottom: calc(100% + 6px);
       left: 50%;
       transform: translateX(-50%);
-      padding: 0.5rem;
       background: #1f2937;
-      color: white;
-      border-radius: 0.375rem;
-      white-space: nowrap;
-      font-size: 0.875rem;
-      z-index: 10;
-      margin-bottom: 0.25rem;
+      color: #f9fafb;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.4;
+      padding: 6px 10px;
+      border-radius: 6px;
+      white-space: normal;
+      width: max-content;
+      max-width: 320px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 50;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    .tip:hover::after { opacity: 1; }
+    .tip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #e5e7eb;
+      color: #6b7280;
+      font-size: 10px;
+      font-weight: 700;
+      font-style: normal;
+      line-height: 1;
+      margin-left: 4px;
+      flex-shrink: 0;
+      cursor: help;
+      vertical-align: middle;
+    }
+    pre.prompt-block {
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen" x-data="reportApp()" x-cloak>
+
   <header class="bg-gray-900 text-white px-6 py-4 shadow-lg">
-    <h1 class="text-2xl font-bold">Run Report</h1>
-    <p class="text-gray-400 text-sm mt-1" x-text="`${data.policy_set} — ${data.model} — ${data.timestamp}`"></p>
+    <div class="max-w-screen-xl mx-auto">
+      <h1 class="text-2xl font-bold tracking-tight">Run Report</h1>
+      <p class="text-gray-400 text-sm mt-0.5">
+        <span x-text="data.policy_set"></span>
+        &mdash; <span x-text="data.model"></span>
+        &mdash; <span x-text="data.timestamp"></span>
+      </p>
+    </div>
   </header>
 
   <div class="max-w-screen-xl mx-auto p-6 space-y-6">
-    <!-- Overview Section -->
+
+    <!-- Overview -->
     <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
       <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-        <span class="tip" data-tip="Summary of the pipeline run configuration — model used, policy set processed, and stages completed.">Overview</span>
-        <span class="tip-icon tip" data-tip="Summary of the pipeline run configuration — model used, policy set processed, and stages completed.">i</span>
+        <span class="tip" data-tip="Pipeline run configuration and stage completion.">Overview</span>
+        <span class="tip-icon tip" data-tip="Pipeline run configuration and stage completion.">i</span>
       </h2>
-      <div class="space-y-3">
-        <div class="grid grid-cols-3 gap-4 text-sm">
-          <div>
-            <span class="text-gray-500 tip" data-tip="The LLM used for all pipeline stages (risk matching, domain context, prompt generation).">Model:</span>
-            <span class="ml-2 font-medium" x-text="data.model"></span>
-          </div>
-          <div>
-            <span class="text-gray-500 tip" data-tip="The content policy document processed in this run.">Policy Set:</span>
-            <span class="ml-2 font-medium" x-text="data.policy_set"></span>
-          </div>
-          <div>
-            <span class="text-gray-500 tip" data-tip="When this pipeline run completed.">Timestamp:</span>
-            <span class="ml-2 font-medium" x-text="data.timestamp"></span>
-          </div>
+      <div class="grid grid-cols-3 gap-4 text-sm mb-4">
+        <div>
+          <span class="tip text-gray-400" data-tip="The LLM used for all pipeline stages.">Model</span>
+          <p class="font-medium text-gray-800" x-text="data.model"></p>
         </div>
         <div>
-          <div class="text-gray-500 text-sm mb-2 tip" data-tip="Pipeline stages completed in order. Full pipeline: identify_domains → map_risks → anchor → contextualize → structure.">Stages Completed:</div>
-          <div class="flex items-center gap-2 flex-wrap">
-            <template x-for="(stage, idx) in data.stages_completed" :key="idx">
-              <div class="flex items-center gap-2">
-                <span
-                  class="tip px-3 py-1 rounded-full text-xs font-medium"
-                  :class="{
-                    'bg-indigo-100 text-indigo-700': stage === 'identify_domains',
-                    'bg-blue-100 text-blue-700': stage === 'map_risks',
-                    'bg-green-100 text-green-700': stage === 'anchor',
-                    'bg-emerald-100 text-emerald-700': stage === 'contextualize',
-                    'bg-purple-100 text-purple-700': stage === 'structure'
-                  }"
-                  :data-tip="stageTip(stage)"
-                  x-text="stage"
-                ></span>
-                <span
-                  x-show="idx < data.stages_completed.length - 1"
-                  class="text-gray-400"
-                >→</span>
-              </div>
-            </template>
-          </div>
+          <span class="tip text-gray-400" data-tip="The policy document processed.">Policy Set</span>
+          <p class="font-medium text-gray-800" x-text="data.policy_set"></p>
         </div>
+        <div>
+          <span class="tip text-gray-400" data-tip="When this pipeline run completed.">Timestamp</span>
+          <p class="font-medium text-gray-800" x-text="data.timestamp"></p>
+        </div>
+      </div>
+
+      <!-- Stage pipeline -->
+      <div class="tip text-gray-400 text-sm mb-2" data-tip="Pipeline stages completed in order. Full pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains.">Stages Completed</div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <template x-for="(stage, idx) in data.stages_completed" :key="idx">
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5">
+              <span class="px-3 py-1 rounded-full text-xs font-medium"
+                :class="stageColor(stage)"
+                x-text="stage"></span>
+              <template x-if="stageMs(stage) !== null">
+                <span class="text-[10px] text-gray-400 font-mono" x-text="formatMs(stageMs(stage))"></span>
+              </template>
+            </div>
+            <span x-show="idx < data.stages_completed.length - 1" class="text-gray-400">&rarr;</span>
+          </div>
+        </template>
       </div>
     </section>
 
-    <!-- Token Usage Section -->
+    <!-- Token Usage -->
     <section x-show="data.token_usage" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
       <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-        <span class="tip" data-tip="LLM API token consumption for this run. Higher counts indicate more complex processing or larger policy documents.">Token Usage</span>
-        <span class="tip-icon tip" data-tip="LLM API token consumption for this run. Higher counts indicate more complex processing or larger policy documents.">i</span>
+        <span class="tip" data-tip="LLM API token consumption for this run.">Token Usage</span>
+        <span class="tip-icon tip" data-tip="LLM API token consumption for this run.">i</span>
       </h2>
-      <div class="grid grid-cols-4 gap-4 text-sm">
-        <div>
-          <span class="text-gray-500 tip" data-tip="Input tokens sent to the LLM across all API calls in this run.">Prompt Tokens:</span>
-          <span class="ml-2 font-medium" x-text="data.token_usage?.prompt_tokens || 0"></span>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div class="tip text-center p-3 bg-gray-50 rounded-lg" data-tip="Input tokens sent to the LLM.">
+          <p class="text-2xl font-bold text-indigo-600" x-text="(data.token_usage?.prompt_tokens || 0).toLocaleString()"></p>
+          <p class="text-xs text-gray-400 mt-1">Prompt Tokens</p>
         </div>
-        <div>
-          <span class="text-gray-500 tip" data-tip="Output tokens generated by the LLM across all calls.">Completion Tokens:</span>
-          <span class="ml-2 font-medium" x-text="data.token_usage?.completion_tokens || 0"></span>
+        <div class="tip text-center p-3 bg-gray-50 rounded-lg" data-tip="Output tokens generated by the LLM.">
+          <p class="text-2xl font-bold text-teal-600" x-text="(data.token_usage?.completion_tokens || 0).toLocaleString()"></p>
+          <p class="text-xs text-gray-400 mt-1">Completion Tokens</p>
         </div>
-        <div>
-          <span class="text-gray-500 tip" data-tip="Total token consumption (prompt + completion). Use for cost estimation.">Total Tokens:</span>
-          <span class="ml-2 font-medium" x-text="data.token_usage?.total_tokens || 0"></span>
+        <div class="tip text-center p-3 bg-gray-50 rounded-lg" data-tip="Total token consumption (prompt + completion).">
+          <p class="text-2xl font-bold text-gray-800" x-text="(data.token_usage?.total_tokens || 0).toLocaleString()"></p>
+          <p class="text-xs text-gray-400 mt-1">Total Tokens</p>
         </div>
-        <div>
-          <span class="text-gray-500 tip" data-tip="Number of separate LLM API calls made during the pipeline run.">Calls:</span>
-          <span class="ml-2 font-medium" x-text="data.token_usage?.calls || 0"></span>
+        <div class="tip text-center p-3 bg-gray-50 rounded-lg" data-tip="Number of separate LLM API calls.">
+          <p class="text-2xl font-bold text-amber-600" x-text="data.token_usage?.calls || 0"></p>
+          <p class="text-xs text-gray-400 mt-1">LLM Calls</p>
         </div>
       </div>
+
+      <!-- Per-stage breakdown -->
+      <template x-if="data.token_usage?.per_stage && Object.keys(data.token_usage.per_stage).length">
+        <div>
+          <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Per-Stage Breakdown</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-left text-xs text-gray-400 uppercase border-b border-gray-200">
+                  <th class="pb-2 pr-3">Stage</th>
+                  <th class="pb-2 pr-3 text-right">Prompt</th>
+                  <th class="pb-2 pr-3 text-right">Completion</th>
+                  <th class="pb-2 pr-3 text-right">Total</th>
+                  <th class="pb-2 text-right">Calls</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="[stage, usage] in Object.entries(data.token_usage.per_stage)" :key="stage">
+                  <tr class="border-b border-gray-100">
+                    <td class="py-2 pr-3"><span class="px-2 py-0.5 rounded text-xs" :class="stageColor(stage)" x-text="stage"></span></td>
+                    <td class="py-2 pr-3 text-right font-mono text-gray-600" x-text="(usage.prompt_tokens || 0).toLocaleString()"></td>
+                    <td class="py-2 pr-3 text-right font-mono text-gray-600" x-text="(usage.completion_tokens || 0).toLocaleString()"></td>
+                    <td class="py-2 pr-3 text-right font-mono font-medium text-gray-800" x-text="(usage.total_tokens || 0).toLocaleString()"></td>
+                    <td class="py-2 text-right font-mono text-gray-600" x-text="usage.calls || 0"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
     </section>
 
-    <!-- Pipeline Events Section -->
+    <!-- Pipeline Events by Stage -->
     <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
       <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-        <span class="tip" data-tip="Raw diagnostic events emitted during each pipeline stage. These trace decisions, filtering, and fallbacks the pipeline made.">Pipeline Events</span>
-        <span class="tip-icon tip" data-tip="Raw diagnostic events emitted during each pipeline stage. These trace decisions, filtering, and fallbacks the pipeline made.">i</span>
+        <span class="tip" data-tip="Events emitted during each pipeline stage — LLM calls, decisions, filtering, and diagnostics.">Pipeline Events</span>
+        <span class="tip-icon tip" data-tip="Events emitted during each pipeline stage.">i</span>
+        <span class="ml-2 text-xs font-normal text-gray-400" x-text="`${llmCallCount} LLM calls, ${(data.events || []).length} total events`"></span>
       </h2>
+
       <div class="space-y-4">
         <template x-for="[stageName, events] in Object.entries(stages)" :key="stageName">
-          <div
-            class="border-l-4 pl-4 py-2"
-            :class="{
-              'border-indigo-500': stageName === 'identify_domains',
-              'border-blue-500': stageName === 'map_risks',
-              'border-green-500': stageName === 'anchor',
-              'border-emerald-500': stageName === 'contextualize',
-              'border-purple-500': stageName === 'structure'
-            }"
-          >
-            <h3 class="font-semibold text-gray-700 mb-2">
+          <div class="border-l-4 pl-4 py-2" :class="stageBorderColor(stageName)">
+            <h3 class="font-semibold text-gray-700 mb-2 flex items-center gap-2">
               <span class="tip" :data-tip="stageTip(stageName)" x-text="stageName"></span>
+              <span class="text-xs text-gray-400 font-normal" x-text="`${events.length} events`"></span>
             </h3>
+
             <div class="space-y-2">
               <template x-for="(event, idx) in events" :key="idx">
                 <div class="text-sm">
-                  <!-- identify_domains events -->
-                  <template x-if="event.event === 'selected_domains'">
-                    <div>
-                      <span class="text-gray-500 tip" data-tip="Domain ontologies the LLM selected as relevant. Always-included: CCO, Commons, D3FEND, CSO, LKIF. Selectable: FIBO (finance), OBO (biomedical), IOF (manufacturing).">Selected Domains:</span>
-                      <div class="flex gap-2 mt-1 flex-wrap">
-                        <template x-for="domain in event.domains" :key="domain">
-                          <span class="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs" x-text="domain"></span>
+
+                  <!-- LLM Call -->
+                  <template x-if="event.event === 'llm_call'">
+                    <div class="border border-gray-200 rounded-lg" x-data="{ open: false }">
+                      <div class="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-50" @click="open = !open">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="px-2 py-0.5 rounded text-xs bg-violet-100 text-violet-800 font-medium">LLM Call #<span x-text="event.call_number"></span></span>
+                          <span class="text-xs text-gray-500" x-text="event.stage"></span>
+                          <template x-if="event.context?.policy_concept">
+                            <span class="text-xs text-gray-600" x-text="event.context.policy_concept"></span>
+                          </template>
+                          <template x-if="event.context?.risk_id">
+                            <span class="text-xs font-mono text-gray-500" x-text="event.context.risk_id"></span>
+                          </template>
+                          <template x-if="event.duration_ms">
+                            <span class="text-[10px] text-gray-400 font-mono" x-text="formatMs(event.duration_ms)"></span>
+                          </template>
+                        </div>
+                        <svg class="w-4 h-4 text-gray-400 transition-transform" :class="open ? 'rotate-180' : ''"
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                      </div>
+                      <div x-show="open" class="border-t border-gray-100 p-3 space-y-3">
+                        <!-- Messages -->
+                        <template x-for="(msg, mi) in event.messages || []" :key="mi">
+                          <div>
+                            <div class="flex items-center gap-2 mb-1">
+                              <span class="px-2 py-0.5 rounded text-xs font-medium"
+                                :class="{
+                                  'bg-blue-100 text-blue-800': msg.role === 'system',
+                                  'bg-green-100 text-green-800': msg.role === 'user',
+                                  'bg-purple-100 text-purple-800': msg.role === 'assistant'
+                                }"
+                                x-text="msg.role"></span>
+                              <span class="text-[10px] text-gray-400" x-text="`${(msg.content || '').length} chars`"></span>
+                            </div>
+                            <pre class="prompt-block text-xs text-gray-600 bg-gray-50 rounded p-2 border border-gray-100" x-text="msg.content"></pre>
+                          </div>
                         </template>
+                        <!-- Response -->
+                        <div>
+                          <div class="flex items-center gap-2 mb-1">
+                            <span class="px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">response</span>
+                          </div>
+                          <pre class="prompt-block text-xs text-gray-600 bg-amber-50 rounded p-2 border border-amber-100" x-text="JSON.stringify(event.response, null, 2)"></pre>
+                        </div>
                       </div>
                     </div>
                   </template>
-                  <template x-if="event.event === 'invalid_domain_keys'">
-                    <div>
-                      <span class="text-gray-500 tip" data-tip="LLM returned domain keys that don't match any known ontology. Silently dropped. High counts indicate hallucination.">Invalid Domain Keys:</span>
-                      <span class="ml-2 text-red-600 font-medium" x-text="event.count"></span>
+
+                  <!-- Stage completed -->
+                  <template x-if="event.event === 'stage_completed'">
+                    <div class="text-green-700 flex items-center gap-2">
+                      <span class="text-xs font-medium">Stage completed</span>
+                      <span class="text-[10px] font-mono text-gray-400" x-text="formatMs(event.duration_ms)"></span>
                     </div>
                   </template>
 
-                  <!-- map_risks events -->
+                  <!-- Ingest events -->
+                  <template x-if="event.event === 'input_format_detected'">
+                    <div>
+                      <span class="text-gray-500">Input format:</span>
+                      <span class="ml-1 font-medium" x-text="event.format"></span>
+                    </div>
+                  </template>
+                  <template x-if="event.event === 'context_extracted'">
+                    <div>
+                      <span class="text-gray-500">Context extracted:</span>
+                      <span class="ml-1 font-medium" x-text="event.organization || '?'"></span>
+                      <span class="text-gray-400 mx-1">&middot;</span>
+                      <span x-text="event.domain || '?'"></span>
+                      <span class="text-gray-400 mx-1">&middot;</span>
+                      <span class="text-xs text-gray-500" x-text="`${event.fields_populated}/8 fields`"></span>
+                    </div>
+                  </template>
+                  <template x-if="event.event === 'context_weak_inference'">
+                    <div class="text-amber-600">
+                      <span class="text-gray-500">Missing fields:</span>
+                      <span class="ml-1 font-medium" x-text="event.missing_fields?.join(', ')"></span>
+                    </div>
+                  </template>
+                  <template x-if="event.event === 'policies_extracted'">
+                    <div>
+                      <span class="text-gray-500">Policies extracted:</span>
+                      <span class="ml-1 font-medium" x-text="event.count"></span>
+                      <span x-show="event.skipped" class="ml-1 text-xs text-gray-400">(pre-parsed)</span>
+                    </div>
+                  </template>
+                  <template x-if="event.event === 'enrichment_stats'">
+                    <div>
+                      <span class="text-gray-500">Enrichment:</span>
+                      <span class="ml-1" x-text="`${event.policies_enriched} enriched`"></span>
+                      <span class="text-gray-400 mx-1">&middot;</span>
+                      <span x-text="`${event.boundary_pairs_total} boundary pairs`"></span>
+                      <span x-show="event.policies_with_zero_pairs" class="ml-1 text-amber-600 text-xs" x-text="`(${event.policies_with_zero_pairs} with zero pairs)`"></span>
+                    </div>
+                  </template>
+                  <template x-if="event.event === 'enrichment_skipped'">
+                    <div class="text-gray-400 italic">Enrichment skipped</div>
+                  </template>
+
+                  <!-- Domain detection events -->
+                  <template x-if="event.event === 'domain_detected'">
+                    <div>
+                      <span class="text-gray-500">Domain:</span>
+                      <span class="ml-1 font-medium capitalize" x-text="event.domain"></span>
+                      <span class="ml-1 text-xs text-gray-400" x-text="`(${event.source})`"></span>
+                      <span x-show="event.raw" class="ml-1 text-xs text-gray-400" x-text="`raw: ${event.raw}`"></span>
+                    </div>
+                  </template>
+
+                  <!-- Map risks events -->
+                  <template x-if="event.event === 'perspective_expansion'">
+                    <div x-data="{ detailOpen: false }">
+                      <div class="flex items-center gap-2 cursor-pointer" @click="detailOpen = !detailOpen">
+                        <span class="text-gray-500">Search:</span>
+                        <span class="font-medium" x-text="event.policy_concept"></span>
+                        <span class="text-xs text-gray-500" x-text="`${event.candidate_count} candidates (${event.multi_perspective_count} multi-perspective, ${event.exclusive_count} single)`"></span>
+                        <svg class="w-3 h-3 text-gray-400 transition-transform" :class="detailOpen ? 'rotate-180' : ''"
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                      </div>
+                      <div x-show="detailOpen" class="mt-2 ml-4">
+                        <div class="flex flex-wrap gap-1 mb-2">
+                          <template x-for="[src, cnt] in Object.entries(event.by_source || {})" :key="src">
+                            <span class="px-2 py-0.5 rounded text-xs bg-blue-50 text-blue-700" x-text="`${src}: ${cnt}`"></span>
+                          </template>
+                        </div>
+                        <div class="overflow-x-auto">
+                          <table class="w-full text-xs">
+                            <thead>
+                              <tr class="text-left text-gray-400 border-b border-gray-200">
+                                <th class="pb-1 pr-2">Risk ID</th>
+                                <th class="pb-1 pr-2">Best Distance</th>
+                                <th class="pb-1">Sources</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <template x-for="[rid, info] in Object.entries(event.per_candidate || {})" :key="rid">
+                                <tr class="border-b border-gray-50">
+                                  <td class="py-1 pr-2 font-mono text-gray-600" x-text="rid"></td>
+                                  <td class="py-1 pr-2">
+                                    <span class="px-1.5 py-0.5 rounded text-xs font-mono"
+                                      :class="{
+                                        'bg-green-100 text-green-800': info.best_distance < 0.3,
+                                        'bg-amber-100 text-amber-800': info.best_distance >= 0.3 && info.best_distance <= 0.5,
+                                        'bg-red-100 text-red-800': info.best_distance > 0.5
+                                      }"
+                                      x-text="info.best_distance"></span>
+                                  </td>
+                                  <td class="py-1">
+                                    <div class="flex flex-wrap gap-1">
+                                      <template x-for="s in info.sources" :key="s">
+                                        <span class="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600" x-text="s"></span>
+                                      </template>
+                                    </div>
+                                  </td>
+                                </tr>
+                              </template>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
                   <template x-if="event.event === 'match_count'">
                     <div>
-                      <span class="text-gray-500 tip" data-tip="Number of risks matched to this policy concept from the knowledge graph.">Match Count:</span>
-                      <span class="ml-2 font-medium" x-text="event.policy_concept"></span>
-                      <span class="ml-1 text-gray-400">—</span>
-                      <span class="ml-1 font-medium" x-text="event.count"></span>
+                      <span class="text-gray-500">Matched:</span>
+                      <span class="ml-1 font-medium" x-text="event.policy_concept"></span>
+                      <span class="text-gray-400 mx-1">&rarr;</span>
+                      <span class="font-medium" x-text="`${event.count} risks`"></span>
                     </div>
                   </template>
                   <template x-if="event.event === 'weak_match'">
                     <div class="text-amber-600">
-                      <span class="text-gray-500 tip" data-tip="Risk matched with semantic distance > 0.4. May not genuinely apply to the policy concept.">Weak Match:</span>
-                      <span class="ml-2 font-medium" x-text="event.risk_id"></span>
-                      <span class="ml-1 text-gray-400">—</span>
-                      <span class="ml-1" x-text="`distance: ${event.distance}`"></span>
+                      <span class="text-gray-500">Weak match:</span>
+                      <span class="ml-1 font-mono text-xs" x-text="event.risk_id"></span>
+                      <span class="ml-1 font-mono text-xs" x-text="`distance: ${event.distance}`"></span>
                     </div>
                   </template>
-                  <template x-if="event.event === 'invalid_risk_indices'">
-                    <div>
-                      <span class="text-gray-500 tip" data-tip="LLM returned out-of-range risk indices. Indicates the model isn't following the numbered-choice format.">Invalid Risk Indices:</span>
-                      <span class="ml-2 text-red-600 font-medium" x-text="event.count"></span>
-                    </div>
-                  </template>
-
-                  <!-- anchor events -->
-                  <template x-if="event.event === 'candidate_tiers'">
-                    <div>
-                      <span class="text-gray-500 tip" data-tip="Ontology candidate sources by tier: seeds (from risk), structural (subclass/equivalent), search_connected (search + ontology links), search_only (pure search), merged (final count).">Candidate Tiers:</span>
-                      <span class="ml-2 font-medium" x-text="event.risk_id"></span>
-                      <span class="ml-2 text-xs text-gray-500">
-                        seeds:<span class="ml-1 font-medium" x-text="event.seeds"></span>
-                        structural:<span class="ml-1 font-medium" x-text="event.structural"></span>
-                        search_connected:<span class="ml-1 font-medium" x-text="event.search_connected"></span>
-                        search_only:<span class="ml-1 font-medium" x-text="event.search_only"></span>
-                        merged:<span class="ml-1 font-medium" x-text="event.merged"></span>
-                      </span>
-                    </div>
-                  </template>
-                  <template x-if="event.event === 'domain_filtered'">
-                    <div>
-                      <span class="text-gray-500 tip" data-tip="Candidates filtered by domain relevance. Filtered = from irrelevant ontologies, kept = passed domain filter.">Domain Filtered:</span>
-                      <span class="ml-2 font-medium" x-text="event.risk_id"></span>
-                      <span class="ml-2 text-red-600 text-xs" x-text="`filtered: ${event.total_filtered}`"></span>
-                      <span class="ml-2 text-green-600 text-xs" x-text="`kept: ${event.total_kept}`"></span>
-                    </div>
-                  </template>
-                  <template x-if="event.event === 'role_derivation'">
-                    <div>
-                      <span class="text-gray-500 tip" data-tip="How semantic role was assigned. Deterministic derivation from BFO/CCO superclass chain is preferred over LLM assignment.">Role Derivation:</span>
-                      <span class="ml-2 font-medium" x-text="event.risk_id"></span>
-                      <span class="ml-1 text-gray-400">—</span>
-                      <span class="ml-1" x-text="event.role"></span>
-                    </div>
-                  </template>
-                  <template x-if="event.event === 'cache_hit'">
-                    <div class="text-green-600">
-                      <span class="text-gray-500 tip" data-tip="Risk's variation axes reused from a prior policy's LLM call (same risk matched from multiple policies). Saves LLM calls.">Cache Hit:</span>
-                      <span class="ml-2 font-medium" x-text="event.risk_id"></span>
-                    </div>
-                  </template>
-
-                  <!-- contextualize events -->
-                  <template x-if="event.event === 'variations_generated'">
-                    <div>
-                      <span class="text-gray-500 tip" data-tip="Number of variation enumerations generated for this risk-axis combination.">Variations Generated:</span>
-                      <span class="ml-2 font-medium font-mono text-xs" x-text="event.risk_id"></span>
-                      <span class="ml-1 text-gray-400">—</span>
-                      <span class="ml-1 text-xs text-gray-500" x-text="event.axis_uri"></span>
-                      <span class="ml-2 font-semibold text-emerald-700" x-text="`×${event.count}`"></span>
-                    </div>
-                  </template>
-                  <template x-if="event.event === 'sibling_fallback'">
-                    <div class="text-amber-600">
-                      <span class="text-gray-500 tip" data-tip="Subclass lookup returned empty (leaf node), so sibling classes were used instead.">Sibling Fallback:</span>
-                      <span class="ml-2 font-medium" x-text="event.risk_id"></span>
-                      <span class="ml-1 text-gray-400">—</span>
-                      <span class="ml-1" x-text="`axis: ${event.axis}`"></span>
-                    </div>
-                  </template>
-                  <template x-if="event.event === 'empty_enumerations'">
+                  <template x-if="event.event === 'invalid_risk_index'">
                     <div class="text-red-600">
-                      <span class="text-gray-500 tip" data-tip="Both subclass and sibling lookups returned empty. This axis has no concrete values.">Empty Enumerations:</span>
-                      <span class="ml-2 font-medium" x-text="event.risk_id"></span>
-                      <span class="ml-1 text-gray-400">—</span>
-                      <span class="ml-1" x-text="`axis: ${event.axis}`"></span>
+                      <span class="text-gray-500">Invalid risk index:</span>
+                      <span class="ml-1" x-text="event.raw_index"></span>
                     </div>
                   </template>
-                  <template x-if="event.event === 'self_references_filtered'">
-                    <div>
-                      <span class="text-gray-500 tip" data-tip="Enumerations pointing back to the axis's own class were removed (redundant).">Self References Filtered:</span>
-                      <span class="ml-2 font-medium" x-text="event.count"></span>
-                    </div>
-                  </template>
-                  <template x-if="event.event === 'disjoint_filtered'">
-                    <div>
-                      <span class="text-gray-500 tip" data-tip="Enumerations removed because they are disjoint from the axis class in the ontology.">Disjoint Filtered:</span>
-                      <span class="ml-2 font-medium" x-text="event.count"></span>
+                  <template x-if="event.event === 'coverage_gap'">
+                    <div class="text-purple-700">
+                      <span class="text-gray-500">Coverage gap:</span>
+                      <span class="ml-1 font-medium" x-text="event.policy_concept"></span>
+                      <span class="ml-1 text-xs" x-text="`type: ${event.gap_type}`"></span>
+                      <span class="ml-1 text-xs font-mono" x-text="`conf: ${event.confidence}`"></span>
                     </div>
                   </template>
 
-                  <!-- stage lifecycle events -->
-                  <template x-if="event.event === 'stage_completed'">
-                    <div class="text-green-600">
-                      <span class="text-gray-500 tip" data-tip="Stage finished processing successfully.">Stage Completed:</span>
-                      <span class="ml-2 font-medium" x-text="event.stage"></span>
+                  <!-- Build landscape events -->
+                  <template x-if="event.event === 'incidents_fetched'">
+                    <div>
+                      <span class="text-gray-500">Incidents:</span>
+                      <span class="ml-1" x-text="`${event.total_incidents} incidents linked to ${event.risks_with_incidents} risks`"></span>
+                      <span class="text-[10px] text-gray-400 font-mono ml-1" x-text="formatMs(event.duration_ms)"></span>
                     </div>
                   </template>
 
-                  <!-- structure events -->
-                  <template x-if="event.event === 'cross_mappings_filtered'">
+                  <!-- Enrich chains events -->
+                  <template x-if="event.event === 'chain_synthesized'">
                     <div>
-                      <span class="text-gray-500 tip" data-tip="Cross-mapping targets not found in the search index. Known limitation: uses search results, not full knowledge graph.">Cross Mappings Filtered:</span>
-                      <span class="ml-2 font-medium" x-text="event.risk_id"></span>
-                      <span class="ml-1 text-gray-400">—</span>
-                      <span class="ml-1" x-text="`count: ${event.count}`"></span>
+                      <span class="text-gray-500">Chain:</span>
+                      <span class="ml-1 font-mono text-xs" x-text="event.risk_id"></span>
+                      <span class="ml-1 text-xs text-gray-500" x-text="`${event.sources}S ${event.consequences}C ${event.impacts}I`"></span>
+                      <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium"
+                        :class="{
+                          'bg-red-100 text-red-800': event.risk_level === 'high' || event.risk_level === 'very_high',
+                          'bg-amber-100 text-amber-800': event.risk_level === 'medium',
+                          'bg-green-100 text-green-800': event.risk_level === 'low' || event.risk_level === 'very_low'
+                        }"
+                        x-text="event.risk_level"></span>
                     </div>
                   </template>
+
                 </div>
               </template>
             </div>
@@ -289,32 +423,90 @@
         </template>
       </div>
     </section>
+
   </div>
 
-  <script>
-    const DATA = __REPORT_DATA__;
-    function reportApp() {
-      const stages = {};
-      for (const ev of DATA.events || []) {
-        if (!stages[ev.stage]) stages[ev.stage] = [];
-        stages[ev.stage].push(ev);
-      }
-      return {
-        data: DATA,
-        stages,
+<script>
+const DATA = __REPORT_DATA__;
 
-        stageTip(stage) {
-          const tips = {
-            'identify_domains': 'Select ontology domains relevant to the policies. Always includes CCO, Commons, D3FEND, CSO, LKIF; may add FIBO, OBO, IOF based on policy content.',
-            'map_risks': 'Match each policy concept to known AI safety risks from the knowledge graph (600+ risks across 10 frameworks). Uses semantic search with LLM re-ranking.',
-            'anchor': 'Find ontological anchors (CCO/domain classes) for each risk and enumerate subclasses. Assigns semantic roles (agent, object, instrument) from BFO/CCO hierarchy.',
-            'contextualize': 'Generate domain-specific variation values for each axis. Applies sibling fallback for leaf nodes, filters self-references and disjoint classes.',
-            'structure': 'Build the final enriched taxonomy with cross-framework mappings and domain context summaries.',
-          };
-          return tips[stage] || 'Pipeline stage';
-        }
-      };
+function reportApp() {
+  const stages = {};
+  for (const ev of DATA.events || []) {
+    const key = ev.stage;
+    if (!stages[key]) stages[key] = [];
+    stages[key].push(ev);
+  }
+
+  const llmCallCount = (DATA.events || []).filter(e => e.event === 'llm_call').length;
+
+  const stageCompleted = {};
+  for (const ev of DATA.events || []) {
+    if (ev.event === 'stage_completed' && ev.duration_ms != null) {
+      stageCompleted[ev.stage] = ev.duration_ms;
     }
-  </script>
+  }
+
+  return {
+    data: DATA,
+    stages,
+    llmCallCount,
+
+    stageMs(stage) {
+      return stageCompleted[stage] ?? null;
+    },
+
+    formatMs(ms) {
+      if (ms == null) return '';
+      if (ms < 1000) return `${Math.round(ms)}ms`;
+      return `${(ms / 1000).toFixed(1)}s`;
+    },
+
+    stageColor(stage) {
+      const colors = {
+        'ingest': 'bg-indigo-100 text-indigo-700',
+        'ingest_context': 'bg-indigo-100 text-indigo-700',
+        'ingest_policies': 'bg-indigo-100 text-indigo-700',
+        'ingest_enrichment': 'bg-indigo-100 text-indigo-700',
+        'detect_domain': 'bg-blue-100 text-blue-700',
+        'map_risks': 'bg-green-100 text-green-700',
+        'characterize_gap': 'bg-green-100 text-green-700',
+        'build_landscape': 'bg-emerald-100 text-emerald-700',
+        'enrich_chains': 'bg-purple-100 text-purple-700',
+      };
+      return colors[stage] || 'bg-gray-100 text-gray-700';
+    },
+
+    stageBorderColor(stage) {
+      const colors = {
+        'ingest': 'border-indigo-500',
+        'ingest_context': 'border-indigo-500',
+        'ingest_policies': 'border-indigo-500',
+        'ingest_enrichment': 'border-indigo-500',
+        'detect_domain': 'border-blue-500',
+        'map_risks': 'border-green-500',
+        'characterize_gap': 'border-green-500',
+        'build_landscape': 'border-emerald-500',
+        'enrich_chains': 'border-purple-500',
+      };
+      return colors[stage] || 'border-gray-400';
+    },
+
+    stageTip(stage) {
+      const tips = {
+        'ingest': '3-pass LLM: context extraction, policy extraction, policy enrichment.',
+        'ingest_context': 'Context extraction pass: organization, domain, purpose, stakeholders.',
+        'ingest_policies': 'Policy extraction pass: identify policy concepts from the document.',
+        'ingest_enrichment': 'Policy enrichment pass: boundary examples, controls, decomposition.',
+        'detect_domain': 'Detect the business domain from the policy profile. Uses menu normalization or LLM fallback.',
+        'map_risks': 'Match each policy concept to AI safety risks via perspective-based semantic search + LLM selection.',
+        'characterize_gap': 'Classify coverage gaps as domain_specialization, compositional, or novel.',
+        'build_landscape': 'Assemble the risk landscape: VAIR enrichment, controls, incidents, cross-mappings.',
+        'enrich_chains': 'LLM-assisted causal chain synthesis for primary-relevance risks.',
+      };
+      return tips[stage] || 'Pipeline stage';
+    },
+  };
+}
+</script>
 </body>
 </html>

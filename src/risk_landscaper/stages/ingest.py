@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Literal
 
 import instructor
@@ -121,6 +122,7 @@ def extract_context(
 ) -> _SlimContext:
     messages = _render_context_messages(document_text)
 
+    t0 = time.monotonic()
     result = client.chat.completions.create(
         model=config.model,
         response_model=_SlimContext,
@@ -129,7 +131,8 @@ def extract_context(
         max_retries=config.max_retries,
         max_tokens=config.max_tokens,
     )
-    debug.log_call("ingest_context", messages, result)
+    duration_ms = (time.monotonic() - t0) * 1000
+    debug.log_call("ingest_context", messages, result, report=report, duration_ms=duration_ms)
 
     if report:
         # Count populated fields
@@ -175,6 +178,7 @@ def extract_policies(
 ) -> list[Policy]:
     messages = _render_policies_messages(document_text, context)
 
+    t0 = time.monotonic()
     result = client.chat.completions.create(
         model=config.model,
         response_model=_SlimPolicyList,
@@ -183,7 +187,8 @@ def extract_policies(
         max_retries=config.max_retries,
         max_tokens=config.max_tokens,
     )
-    debug.log_call("ingest_policies", messages, result)
+    duration_ms = (time.monotonic() - t0) * 1000
+    debug.log_call("ingest_policies", messages, result, report=report, duration_ms=duration_ms)
 
     policies = [
         Policy(
@@ -232,6 +237,7 @@ def enrich_policies(
 ) -> list[Policy]:
     messages = _render_enrichment_messages(document_text, context, policies)
 
+    t0 = time.monotonic()
     result = client.chat.completions.create(
         model=config.model,
         response_model=_SlimEnrichmentList,
@@ -240,7 +246,8 @@ def enrich_policies(
         max_retries=config.max_retries,
         max_tokens=config.max_tokens,
     )
-    debug.log_call("ingest_enrichment", messages, result)
+    duration_ms = (time.monotonic() - t0) * 1000
+    debug.log_call("ingest_enrichment", messages, result, report=report, duration_ms=duration_ms)
 
     # Build lookup by policy_concept
     enrichment_map: dict[str, _SlimEnrichment] = {}

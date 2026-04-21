@@ -1,4 +1,5 @@
 import logging
+import time
 
 import instructor
 from pydantic import BaseModel
@@ -75,6 +76,7 @@ def detect_domain(
         "domain_list": domain_list,
         "policies": profile.policies,
     })
+    t0 = time.monotonic()
     result = client.chat.completions.create(
         model=config.model,
         response_model=_DomainDetection,
@@ -83,7 +85,8 @@ def detect_domain(
         max_retries=config.max_retries,
         max_tokens=config.max_tokens,
     )
-    debug.log_call("detect_domain", messages, result)
+    duration_ms = (time.monotonic() - t0) * 1000
+    debug.log_call("detect_domain", messages, result, report=report, duration_ms=duration_ms)
 
     normalized = normalize_domain(result.domain)
     logger.info("Detected domain: %s (raw: %s, normalized: %s)", result.domain, result.domain, normalized)

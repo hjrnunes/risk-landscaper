@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -101,13 +102,23 @@ def run(
 
     output.mkdir(parents=True, exist_ok=True)
 
+    def _stage_event(name: str, event: str, started: float, **extra) -> None:
+        report.events.append({
+            "stage": name,
+            "event": event,
+            "duration_ms": round((time.monotonic() - started) * 1000, 1),
+            **extra,
+        })
+
     # --- Stage 1: Ingest ---
     text, detected_format, pre_parsed = _load_input(policy_file)
     fmt = input_format or detected_format
 
+    t_stage = time.monotonic()
     if pre_parsed is not None:
         profile = pre_parsed
         typer.echo(f"Loaded pre-parsed profile: {len(profile.policies)} policies")
+        _stage_event("ingest", "stage_completed", t_stage, skipped=True)
         report.stages_completed.append("ingest")
     else:
         from risk_landscaper.stages.ingest import ingest
@@ -117,6 +128,7 @@ def run(
             skip_enrichment=skip_enrichment,
             report=report,
         )
+        _stage_event("ingest", "stage_completed", t_stage)
         report.stages_completed.append("ingest")
         typer.echo(f"  Organization: {profile.organization.name if profile.organization else ''}")
         typer.echo(f"  Domain: {profile.domain}")
@@ -138,7 +150,9 @@ def run(
 
     # --- Stage 2: Detect domain ---
     from risk_landscaper.stages.detect_domain import detect_domain
+    t_stage = time.monotonic()
     selected_domains = detect_domain(profile, client, config, report=report)
+    _stage_event("detect_domain", "stage_completed", t_stage)
     report.stages_completed.append("detect_domain")
     typer.echo(f"  Domain: {selected_domains}")
 
@@ -146,9 +160,13 @@ def run(
     from risk_landscaper.stages.map_risks import map_risks
     risk_handlers = _create_risk_handlers(nexus_base_dir, nexus_chroma_dir)
     typer.echo(f"Mapping {len(profile.policies)} policies to risks...")
+    t_stage = time.monotonic()
     mappings, risk_details, seen_ids, related_risks, risk_actions, coverage_gaps = map_risks(
         profile.policies, client, config, risk_handlers, report=report,
     )
+    _stage_event("map_risks", "stage_completed", t_stage,
+                 risk_count=sum(len(m.matched_risks) for m in mappings),
+                 policy_count=len(mappings))
     report.stages_completed.append("map_risks")
     total_matches = sum(len(m.matched_risks) for m in mappings)
     typer.echo(f"  {total_matches} risk matches across {len(mappings)} policies")
@@ -158,6 +176,7 @@ def run(
     # --- Fetch incidents for matched risks ---
     from ai_atlas_nexus import AIAtlasNexus
     nexus = AIAtlasNexus(base_dir=nexus_base_dir)
+    t_stage = time.monotonic()
     risk_incidents: dict[str, list[dict]] = {}
     for rid in risk_details:
         incidents = nexus.get_related_risk_incidents(risk_id=rid)
@@ -171,13 +190,21 @@ def run(
                 }
                 for inc in incidents
             ]
+    total_inc = sum(len(v) for v in risk_incidents.values())
+    report.events.append({
+        "stage": "build_landscape",
+        "event": "incidents_fetched",
+        "risks_with_incidents": len(risk_incidents),
+        "total_incidents": total_inc,
+        "duration_ms": round((time.monotonic() - t_stage) * 1000, 1),
+    })
     if risk_incidents:
-        total_inc = sum(len(v) for v in risk_incidents.values())
         typer.echo(f"  {total_inc} incident(s) linked to {len(risk_incidents)} risk(s)")
 
     # --- Stage 4: Build landscape ---
     from risk_landscaper.stages.build_landscape import build_risk_landscape
 
+    t_stage = time.monotonic()
     landscape = build_risk_landscape(
         mappings=mappings,
         risk_details_cache=risk_details,
@@ -191,6 +218,9 @@ def run(
         coverage_gaps=coverage_gaps,
         policy_profile=profile,
     )
+    _stage_event("build_landscape", "stage_completed", t_stage,
+                 risk_count=len(landscape.risks),
+                 framework_count=len(landscape.framework_coverage))
     report.stages_completed.append("build_landscape")
 
     # --- Stage 5: Enrich causal chains ---
@@ -200,7 +230,10 @@ def run(
             1 for m in mappings for rm in m.matched_risks if rm.relevance == "primary"
         )
         typer.echo(f"Enriching causal chains for {primary_count} primary-relevance risks...")
+        t_stage = time.monotonic()
         enrich_chains(landscape, profile.policies, client, config, report=report)
+        _stage_event("enrich_chains", "stage_completed", t_stage,
+                     primary_count=primary_count)
         report.stages_completed.append("enrich_chains")
         enriched = sum(1 for r in landscape.risks if r.consequences)
         typer.echo(f"  {enriched} risk(s) enriched with causal chains")

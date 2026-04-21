@@ -1,4 +1,5 @@
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Literal
@@ -119,6 +120,7 @@ def characterize_gap(
     nearest_candidates: list[dict],
     client: instructor.Instructor,
     config: LLMConfig,
+    report=None,
 ) -> _GapClassification:
     candidates = [
         {
@@ -133,6 +135,7 @@ def characterize_gap(
         "concept_definition": concept_definition,
         "candidates": candidates,
     })
+    t0 = time.monotonic()
     result = client.chat.completions.create(
         model=config.model,
         response_model=_GapClassification,
@@ -141,9 +144,10 @@ def characterize_gap(
         max_retries=config.max_retries,
         max_tokens=config.max_tokens,
     )
+    duration_ms = (time.monotonic() - t0) * 1000
     debug.log_call("characterize_gap", messages, result, context={
         "policy_concept": policy_concept,
-    })
+    }, report=report, duration_ms=duration_ms)
     return result
 
 
@@ -245,6 +249,7 @@ def _process_single_policy(
         "concept_definition": pol.concept_definition,
         "candidates": template_candidates,
     })
+    t0 = time.monotonic()
     result = client.chat.completions.create(
         model=config.model,
         response_model=_RiskSelection,
@@ -253,10 +258,11 @@ def _process_single_policy(
         max_retries=config.max_retries,
         max_tokens=config.max_tokens,
     )
+    duration_ms = (time.monotonic() - t0) * 1000
     debug.log_call("map_risks", messages, result, context={
         "policy_concept": pol.policy_concept,
         "num_candidates": len(enriched_candidates),
-    })
+    }, report=report, duration_ms=duration_ms)
 
     valid_risks = []
     for rm in result.matched_risks:
@@ -316,6 +322,7 @@ def _process_single_policy(
             enriched_candidates[:5],
             client,
             config,
+            report=report,
         )
         adjusted_confidence = gap_score * GAP_TYPE_WEIGHTS[classification.gap_type]
         gap = CoverageGap(

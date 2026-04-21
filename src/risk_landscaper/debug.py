@@ -18,35 +18,43 @@ def configure(debug_dir: Path | None) -> None:
         _debug_dir.mkdir(parents=True, exist_ok=True)
 
 
+def _next_call_num() -> int:
+    global _call_counter
+    with _counter_lock:
+        _call_counter += 1
+        return _call_counter
+
+
+def _slug_from_context(context: dict | None) -> str:
+    if not context:
+        return ""
+    for key in ("policy_concept", "risk_name", "risk_id"):
+        if key in context:
+            return "-" + context[key].lower().replace(" ", "-").replace("/", "-")[:40]
+    return ""
+
+
+def _extract_response(response) -> dict | list | str:
+    if hasattr(response, "model_dump"):
+        return response.model_dump()
+    if isinstance(response, list):
+        return [r.model_dump() if hasattr(r, "model_dump") else r for r in response]
+    return str(response)
+
+
 def log_call(
     stage: str,
     messages: list[dict],
     response,
     *,
     context: dict | None = None,
+    report=None,
+    duration_ms: float | None = None,
 ) -> None:
-    global _call_counter
-    with _counter_lock:
-        _call_counter += 1
-        call_num = _call_counter
+    call_num = _next_call_num()
+    slug = _slug_from_context(context)
+    response_data = _extract_response(response)
 
-    # Build slug from context
-    slug = ""
-    if context:
-        for key in ("policy_concept", "risk_name", "risk_id"):
-            if key in context:
-                slug = "-" + context[key].lower().replace(" ", "-").replace("/", "-")[:40]
-                break
-
-    # Extract response data
-    if hasattr(response, "model_dump"):
-        response_data = response.model_dump()
-    elif isinstance(response, list):
-        response_data = [r.model_dump() if hasattr(r, "model_dump") else r for r in response]
-    else:
-        response_data = str(response)
-
-    # JSON file
     if _debug_dir is not None:
         entry = {
             "call_number": call_num,
@@ -62,6 +70,20 @@ def log_call(
         path.write_text(json.dumps(entry, indent=2, default=str))
         logger.debug("Debug log written to %s", path)
 
+    if report is not None:
+        event: dict = {
+            "stage": stage,
+            "event": "llm_call",
+            "call_number": call_num,
+            "messages": messages,
+            "response": response_data,
+        }
+        if context:
+            event["context"] = context
+        if duration_ms is not None:
+            event["duration_ms"] = round(duration_ms, 1)
+        report.events.append(event)
+
 
 def log_event(
     stage: str,
@@ -69,18 +91,8 @@ def log_event(
     *,
     context: dict | None = None,
 ) -> None:
-    """Log a non-LLM pipeline event (e.g. candidate tier reporting)."""
-    global _call_counter
-    with _counter_lock:
-        _call_counter += 1
-        call_num = _call_counter
-
-    slug = ""
-    if context:
-        for key in ("policy_concept", "risk_name", "risk_id"):
-            if key in context:
-                slug = "-" + context[key].lower().replace(" ", "-").replace("/", "-")[:40]
-                break
+    call_num = _next_call_num()
+    slug = _slug_from_context(context)
 
     if _debug_dir is not None:
         entry = {
