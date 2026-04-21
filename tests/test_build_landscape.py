@@ -1,9 +1,9 @@
 import pytest
 from risk_landscaper.models import (
     RiskLandscape, RiskCard, PolicyRiskMapping, RiskMatch,
-    PolicySourceRef, PolicyProfile, Organization,
+    PolicySourceRef, PolicyProfile, Organization, RiskSource,
 )
-from risk_landscaper.stages.build_landscape import _infer_control_type, _infer_control_targets
+from risk_landscaper.stages.build_landscape import _infer_control_type, _infer_control_targets, _infer_source_type
 
 
 def test_build_risk_landscape_basic():
@@ -399,3 +399,53 @@ def test_infer_control_targets_consequence():
 def test_infer_control_targets_default_risk():
     assert _infer_control_targets("Apply guardrails to the model") == "risk"
     assert _infer_control_targets("") == "risk"
+
+
+def test_infer_source_type_data():
+    assert _infer_source_type("training-data") == "data"
+    assert _infer_source_type("input") == "data"
+
+
+def test_infer_source_type_model():
+    assert _infer_source_type("output") == "model"
+    assert _infer_source_type("inference") == "model"
+    assert _infer_source_type("agentic") == "model"
+
+
+def test_infer_source_type_organisational():
+    assert _infer_source_type("non-technical") == "organisational"
+
+
+def test_infer_source_type_none():
+    assert _infer_source_type(None) is None
+    assert _infer_source_type("unknown-type") is None
+
+
+def test_build_landscape_populates_baseline_risk_source():
+    from risk_landscaper.stages.build_landscape import build_risk_landscape
+
+    mappings = [
+        PolicyRiskMapping(
+            policy_concept="Bias Policy",
+            matched_risks=[
+                RiskMatch(risk_id="atlas-bias", risk_name="Bias",
+                          relevance="primary", justification="test"),
+            ],
+        ),
+    ]
+    risk_details_cache = {
+        "atlas-bias": {
+            "id": "atlas-bias", "name": "Bias",
+            "description": "Model exhibits systematic bias",
+            "concern": "Discriminatory outputs affecting users",
+            "risk_type": "output",
+        },
+    }
+    landscape = build_risk_landscape(
+        mappings=mappings, risk_details_cache=risk_details_cache,
+        model="test", run_slug="test", timestamp="t",
+    )
+    card = landscape.risks[0]
+    assert len(card.risk_sources) == 1
+    assert card.risk_sources[0].source_type == "model"
+    assert card.risk_sources[0].description == "Discriminatory outputs affecting users"

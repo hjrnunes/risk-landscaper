@@ -7,6 +7,7 @@ from risk_landscaper.models import (
     RiskCard,
     RiskControl,
     RiskLandscape,
+    RiskSource,
     KnowledgeBaseRef,
     WeakMatch,
 )
@@ -63,6 +64,22 @@ def _infer_control_targets(description: str) -> str:
         if any(kw in lower for kw in keywords):
             return target
     return "risk"
+
+
+_RISK_TYPE_TO_SOURCE_TYPE: dict[str, str] = {
+    "training-data": "data",
+    "input": "data",
+    "output": "model",
+    "inference": "model",
+    "non-technical": "organisational",
+    "agentic": "model",
+}
+
+
+def _infer_source_type(risk_type: str | None) -> str | None:
+    if not risk_type:
+        return None
+    return _RISK_TYPE_TO_SOURCE_TYPE.get(risk_type)
 
 
 def _actions_to_controls(action_descriptions: list[str]) -> list[RiskControl]:
@@ -131,6 +148,16 @@ def build_risk_landscape(
                 [descriptor_raw] if descriptor_raw else []
             )
 
+            source_type = _infer_source_type(details.get("risk_type"))
+            baseline_source = (
+                [RiskSource(
+                    description=details.get("concern") or details.get("description") or "",
+                    source_type=source_type,
+                )]
+                if details.get("concern") or details.get("description")
+                else []
+            )
+
             risks.append(RiskCard(
                 risk_id=rm.risk_id,
                 risk_name=details.get("name") or rm.risk_name or rm.risk_id,
@@ -140,6 +167,7 @@ def build_risk_landscape(
                 cross_mappings=related_risks.get(rm.risk_id, []),
                 risk_type=details.get("risk_type"),
                 descriptors=descriptors,
+                risk_sources=baseline_source,
                 controls=_actions_to_controls(actions),
                 related_policies=_collect_related_policies(rm.risk_id, mappings),
                 related_actions=actions,
