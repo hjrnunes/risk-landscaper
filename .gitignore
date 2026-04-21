@@ -9,3 +9,5 @@ build/
 runs/
 .chroma/
 uv.lock
+.claude/
+.DS_Store
