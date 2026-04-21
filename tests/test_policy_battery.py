@@ -24,30 +24,23 @@ from risk_landscaper.stages.ingest import (
 )
 
 POLICY_DIR = Path(__file__).parent.parent / "policy_examples"
-REF_DIR = POLICY_DIR / "references"
 
 # ---- Catalog of all policy files with expected properties ----
 
 JSON_ARRAY_FILES = [
+    ("aramco.json", 5),
     ("generic.json", 8),
     ("healthcare.json", 7),
     ("swb.json", 6),
 ]
 
-JSON_ARRAY_REF_FILES = [
-    ("references/aramco.json", 5),
-]
-
 MARKDOWN_FILES = [
+    "atlas-telecom.md",
+    "commonwealth-insurance.md",
     "dhs-gov.md",
     "law.md",
+    "meridian-bank.md",
     "rdash-nhs.md",
-]
-
-MARKDOWN_REF_FILES = [
-    "references/atlas-telecom.md",
-    "references/commonwealth-insurance.md",
-    "references/meridian-bank.md",
 ]
 
 NEXUS_FILES = [
@@ -56,9 +49,7 @@ NEXUS_FILES = [
 
 ALL_FILES = (
         [f for f, _ in JSON_ARRAY_FILES]
-        + [f for f, _ in JSON_ARRAY_REF_FILES]
         + MARKDOWN_FILES
-        + MARKDOWN_REF_FILES
         + [f for f, _, _ in NEXUS_FILES]
 )
 
@@ -101,7 +92,7 @@ def _stub_enrichments(policies):
 # 1. Format detection — _load_input classifies each file correctly
 # ====================================================================
 
-@pytest.mark.parametrize("filename", [f for f, _ in JSON_ARRAY_FILES + JSON_ARRAY_REF_FILES])
+@pytest.mark.parametrize("filename", [f for f, _ in JSON_ARRAY_FILES])
 def test_format_detection_json_array(filename):
     path = POLICY_DIR / filename
     _, fmt, pre_parsed = _load_input(path)
@@ -109,7 +100,7 @@ def test_format_detection_json_array(filename):
     assert pre_parsed is None
 
 
-@pytest.mark.parametrize("filename", MARKDOWN_FILES + MARKDOWN_REF_FILES)
+@pytest.mark.parametrize("filename", MARKDOWN_FILES)
 def test_format_detection_markdown(filename):
     path = POLICY_DIR / filename
     _, fmt, pre_parsed = _load_input(path)
@@ -130,7 +121,7 @@ def test_format_detection_nexus(filename, _rc, _cc):
 # 2. JSON array parsing (pure, no LLM)
 # ====================================================================
 
-@pytest.mark.parametrize("filename,expected_count", JSON_ARRAY_FILES + JSON_ARRAY_REF_FILES)
+@pytest.mark.parametrize("filename,expected_count", JSON_ARRAY_FILES)
 def test_json_array_parsing(filename, expected_count):
     text = (POLICY_DIR / filename).read_text()
     policies = parse_json_policies(text)
@@ -142,7 +133,7 @@ def test_json_array_parsing(filename, expected_count):
         assert p.acceptable_uses == []
 
 
-@pytest.mark.parametrize("filename,expected_count", JSON_ARRAY_FILES + JSON_ARRAY_REF_FILES)
+@pytest.mark.parametrize("filename,expected_count", JSON_ARRAY_FILES)
 def test_json_array_concepts_unique(filename, expected_count):
     text = (POLICY_DIR / filename).read_text()
     policies = parse_json_policies(text)
@@ -207,10 +198,10 @@ def test_nexus_profile_roundtrip():
 # ====================================================================
 
 INGEST_JSON_CASES = [
+    ("aramco.json", "energy", "Aramco", 5),
     ("generic.json", "general", "Generic AI Provider", 8),
     ("healthcare.json", "healthcare", "Lakeview Health System", 7),
     ("swb.json", "banking", "South West Bank", 6),
-    ("references/aramco.json", "energy", "Aramco", 5),
 ]
 
 
@@ -258,12 +249,12 @@ def test_ingest_json_array_skip_enrichment(mock_client, mock_config, filename, d
 # ====================================================================
 
 INGEST_MD_CASES = [
+    ("atlas-telecom.md", "telecom", "Atlas Communications"),
+    ("commonwealth-insurance.md", "insurance", "Commonwealth Insurance Group"),
     ("dhs-gov.md", "government", "U.S. Department of Homeland Security"),
-    ("rdash-nhs.md", "healthcare", "RDaSH NHS Foundation Trust"),
     ("law.md", "corporate", "Fisher & Phillips LLP"),
-    ("references/atlas-telecom.md", "telecom", "Atlas Communications"),
-    ("references/commonwealth-insurance.md", "insurance", "Commonwealth Insurance Group"),
-    ("references/meridian-bank.md", "banking", "Meridian Federal Bank"),
+    ("meridian-bank.md", "banking", "Meridian Federal Bank"),
+    ("rdash-nhs.md", "healthcare", "RDaSH NHS Foundation Trust"),
 ]
 
 
@@ -386,7 +377,7 @@ def test_swb_json_concepts():
 
 
 def test_aramco_json_concepts():
-    text = (REF_DIR / "aramco.json").read_text()
+    text = (POLICY_DIR / "aramco.json").read_text()
     policies = parse_json_policies(text)
     concepts = {p.policy_concept for p in policies}
     assert "Proprietary Technical Data" in concepts
@@ -412,7 +403,7 @@ def test_swb_json_definitions_mention_south_west_bank():
 # 8. Markdown files are loadable and non-trivial
 # ====================================================================
 
-@pytest.mark.parametrize("filename", MARKDOWN_FILES + MARKDOWN_REF_FILES)
+@pytest.mark.parametrize("filename", MARKDOWN_FILES)
 def test_markdown_non_trivial(filename):
     text = (POLICY_DIR / filename).read_text()
     assert len(text) > 500, f"{filename} is suspiciously short"
@@ -420,12 +411,12 @@ def test_markdown_non_trivial(filename):
 
 
 @pytest.mark.parametrize("filename,expected_substr", [
+    ("atlas-telecom.md", "Atlas Communications"),
+    ("commonwealth-insurance.md", "Commonwealth Insurance"),
     ("dhs-gov.md", "Department of Homeland Security"),
-    ("rdash-nhs.md", "RDaSH"),
     ("law.md", "Generative AI"),
-    ("references/atlas-telecom.md", "Atlas Communications"),
-    ("references/commonwealth-insurance.md", "Commonwealth Insurance"),
-    ("references/meridian-bank.md", "Meridian Federal Bank"),
+    ("meridian-bank.md", "Meridian Federal Bank"),
+    ("rdash-nhs.md", "RDaSH"),
 ])
 def test_markdown_contains_expected_org(filename, expected_substr):
     text = (POLICY_DIR / filename).read_text()
@@ -436,7 +427,7 @@ def test_markdown_contains_expected_org(filename, expected_substr):
 # 9. Domain override works for each JSON file
 # ====================================================================
 
-@pytest.mark.parametrize("filename,_count", JSON_ARRAY_FILES + JSON_ARRAY_REF_FILES)
+@pytest.mark.parametrize("filename,_count", JSON_ARRAY_FILES)
 def test_domain_override_json(mock_client, mock_config, filename, _count):
     text = (POLICY_DIR / filename).read_text()
     mock_client.chat.completions.create.side_effect = [
