@@ -36,8 +36,45 @@ def _detect_framework(risk_id: str) -> str:
     return "unknown"
 
 
+_CONTROL_TYPE_KEYWORDS: dict[str, list[str]] = {
+    "detect": ["detect", "monitor", "audit", "alert", "log", "track", "scan"],
+    "evaluate": ["evaluate", "assess", "benchmark", "test", "measure", "review"],
+    "mitigate": ["mitigate", "reduce", "limit", "filter", "moderate", "constrain"],
+    "eliminate": ["eliminate", "prevent", "prohibit", "block", "remove", "disable"],
+}
+
+_TARGET_KEYWORDS: dict[str, list[str]] = {
+    "source": ["source", "data", "input", "training", "dataset"],
+    "consequence": ["output", "result", "response", "generation"],
+}
+
+
+def _infer_control_type(description: str) -> str | None:
+    lower = description.lower()
+    for control_type, keywords in _CONTROL_TYPE_KEYWORDS.items():
+        if any(kw in lower for kw in keywords):
+            return control_type
+    return None
+
+
+def _infer_control_targets(description: str) -> str:
+    lower = description.lower()
+    for target, keywords in _TARGET_KEYWORDS.items():
+        if any(kw in lower for kw in keywords):
+            return target
+    return "risk"
+
+
 def _actions_to_controls(action_descriptions: list[str]) -> list[RiskControl]:
-    return [RiskControl(description=desc) for desc in action_descriptions if desc]
+    return [
+        RiskControl(
+            description=desc,
+            control_type=_infer_control_type(desc),
+            targets=_infer_control_targets(desc),
+        )
+        for desc in action_descriptions
+        if desc
+    ]
 
 
 def _collect_related_policies(

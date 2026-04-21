@@ -3,6 +3,7 @@ from risk_landscaper.models import (
     RiskLandscape, RiskCard, PolicyRiskMapping, RiskMatch,
     PolicySourceRef, PolicyProfile, Organization,
 )
+from risk_landscaper.stages.build_landscape import _infer_control_type, _infer_control_targets
 
 
 def test_build_risk_landscape_basic():
@@ -358,3 +359,43 @@ def test_build_risk_landscape_descriptor_string_coercion():
         model="test", run_slug="test", timestamp="t",
     )
     assert landscape.risks[0].descriptors == ["single string"]
+
+
+def test_infer_control_type_detect():
+    assert _infer_control_type("Monitor output for harmful content") == "detect"
+    assert _infer_control_type("Audit model decisions regularly") == "detect"
+
+
+def test_infer_control_type_evaluate():
+    assert _infer_control_type("Evaluate model fairness with benchmarks") == "evaluate"
+    assert _infer_control_type("Assess bias across demographic groups") == "evaluate"
+
+
+def test_infer_control_type_mitigate():
+    assert _infer_control_type("Filter offensive content from responses") == "mitigate"
+    assert _infer_control_type("Reduce exposure to sensitive data") == "mitigate"
+
+
+def test_infer_control_type_eliminate():
+    assert _infer_control_type("Prevent unauthorized access to the model") == "eliminate"
+    assert _infer_control_type("Block generation of harmful instructions") == "eliminate"
+
+
+def test_infer_control_type_none():
+    assert _infer_control_type("Apply best practices for AI safety") is None
+    assert _infer_control_type("") is None
+
+
+def test_infer_control_targets_source():
+    assert _infer_control_targets("Validate training data quality") == "source"
+    assert _infer_control_targets("Sanitize input prompts") == "source"
+
+
+def test_infer_control_targets_consequence():
+    assert _infer_control_targets("Filter output for bias") == "consequence"
+    assert _infer_control_targets("Review results before publishing") == "consequence"
+
+
+def test_infer_control_targets_default_risk():
+    assert _infer_control_targets("Apply guardrails to the model") == "risk"
+    assert _infer_control_targets("") == "risk"
