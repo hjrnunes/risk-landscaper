@@ -18,6 +18,8 @@ AIRO AI Card alignment — evolved the data model and pipeline to produce govern
 - **GovernanceProvenance** on every RiskLandscape — `produced_by`, `governance_function`, `aims_activities`, `review_status`.
 - **Backward compatibility** — `RiskDetail = RiskCard` alias, `GovernedSystem = AiSystem` alias, `related_actions` preserved, `_migrate_governed_systems` validator, all new fields default to `None`/`[]`.
 - 19 model tests, 5 build_landscape tests, updated ingest tests.
+- **Policy examples** — 11 real policy files across 6 domains (banking, healthcare, government, corporate, energy, telecom, insurance) in `policy_examples/`.
+- **Test battery** — 76 parametrized tests exercising format detection, JSON/nexus parsing, ingest orchestration, content checks, and domain overrides against all policy examples.
 
 ### Changed
 

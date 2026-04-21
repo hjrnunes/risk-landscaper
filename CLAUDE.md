@@ -89,3 +89,7 @@ uv run pytest tests/test_models.py  # single file
 - **taxonomy-refiner**: `/Users/hjrnunes/workspace/redhat/hjrnunes/taxonomy-refiner` — parent repo, red-team pipeline
 - **AI Atlas Nexus**: `/Users/hjrnunes/workspace/redhat/ibm/ai-atlas-nexus` — risk knowledge graph (600+ risks, 10 frameworks)
 - **Design context**: Obsidian vault `Red Hat`, note `Red Hat/Risk Common Data Foundation/Risk Landscape to AI Card Alignment`
+
+## Important
+
+- always update the changelog
