@@ -20,7 +20,7 @@ AIRO AI Card alignment — evolved the data model and pipeline to produce govern
 - 19 model tests, 5 build_landscape tests, updated ingest tests.
 - **Policy examples** — 11 real policy files across 6 domains (banking, healthcare, government, corporate, energy, telecom, insurance) in `policy_examples/`.
 - **Test battery** — 76 parametrized tests exercising format detection, JSON/nexus parsing, ingest orchestration, content checks, and domain overrides against all policy examples.
-- **run_all_policies.py** — script to run the pipeline against every policy example, outputs to `runs/`.
+- **run_all_policies.py** — script to run the pipeline against every policy example in parallel, outputs to `runs/`. `-j` flag controls concurrency (defaults to CPU count).
 - **justfile** — `just run-all <base_url> <model>` recipe.
 - **HTML reports** — self-contained ingest, risk landscape, and run reports generated alongside YAML/JSON artifacts. Ported from taxonomy-refiner. Tailwind + Alpine.js, `__REPORT_DATA__` JSON embedding pattern.
 
