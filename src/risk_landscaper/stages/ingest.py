@@ -62,6 +62,7 @@ class _SlimEnrichment(BaseModel):
     acceptable_uses: list[str]
     risk_controls: list[str]
     human_involvement: str = ""
+    governance_function: Literal["direct", "evaluate", "monitor", ""] = ""
     agent: str = ""
     activity: str = ""
     entity: str = ""
@@ -269,6 +270,7 @@ def enrich_policies(
             enriched.append(Policy(
                 policy_concept=p.policy_concept,
                 concept_definition=p.concept_definition,
+                governance_function=e.governance_function if e.governance_function else None,
                 boundary_examples=[
                     BoundaryExample(prohibited=b.prohibited, acceptable=b.acceptable)
                     for b in e.boundary_examples

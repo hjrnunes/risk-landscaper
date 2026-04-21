@@ -187,6 +187,7 @@ def test_enrich_policies(mock_client, mock_config):
                 acceptable_uses=["Fraud detection education"],
                 risk_controls=["Human review required"],
                 human_involvement="Compliance officer must validate",
+                governance_function="direct",
                 agent="AI assistant",
                 activity="advise on fraud techniques",
                 entity="financial transaction methods",
@@ -197,6 +198,7 @@ def test_enrich_policies(mock_client, mock_config):
                 acceptable_uses=["AML training"],
                 risk_controls=[],
                 human_involvement="",
+                governance_function="",
             ),
         ]
     )
@@ -208,6 +210,7 @@ def test_enrich_policies(mock_client, mock_config):
     assert fraud.acceptable_uses == ["Fraud detection education"]
     assert fraud.risk_controls == ["Human review required"]
     assert fraud.human_involvement == "Compliance officer must validate"
+    assert fraud.governance_function == "direct"
     assert fraud.decomposition is not None
     assert fraud.decomposition.agent == "AI assistant"
     assert fraud.decomposition.activity == "advise on fraud techniques"
@@ -216,6 +219,7 @@ def test_enrich_policies(mock_client, mock_config):
     aml = next(p for p in result if p.policy_concept == "AML")
     assert aml.acceptable_uses == ["AML training"]
     assert aml.human_involvement is None  # empty string -> None
+    assert aml.governance_function is None  # empty string -> None
     assert aml.decomposition is None  # no agent/activity/entity provided
 
 

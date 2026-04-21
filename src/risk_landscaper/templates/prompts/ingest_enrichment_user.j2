@@ -13,6 +13,7 @@ For each policy, provide:
 - acceptable_uses: list of explicitly permitted uses
 - risk_controls: mitigations or guardrails mentioned
 - human_involvement: any human oversight requirement
+- governance_function: one of "direct" (sets boundaries/rules), "evaluate" (defines measurement criteria), or "monitor" (requires ongoing observation). Empty string if unclear.
 - agent: who performs the governed action (e.g. 'AI assistant', 'clinician', 'the system')
 - activity: what action is being governed (e.g. 'diagnose', 'disclose', 'recommend')
 - entity: what is acted upon (e.g. 'patient data', 'financial records', 'personal information')
