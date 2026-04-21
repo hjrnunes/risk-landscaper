@@ -22,6 +22,7 @@ AIRO AI Card alignment — evolved the data model and pipeline to produce govern
 - **Test battery** — 76 parametrized tests exercising format detection, JSON/nexus parsing, ingest orchestration, content checks, and domain overrides against all policy examples.
 - **run_all_policies.py** — script to run the pipeline against every policy example, outputs to `runs/`.
 - **justfile** — `just run-all <base_url> <model>` recipe.
+- **HTML reports** — self-contained ingest, risk landscape, and run reports generated alongside YAML/JSON artifacts. Ported from taxonomy-refiner. Tailwind + Alpine.js, `__REPORT_DATA__` JSON embedding pattern.
 
 ### Changed
 

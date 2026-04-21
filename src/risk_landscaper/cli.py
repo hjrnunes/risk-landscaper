@@ -124,6 +124,17 @@ def run(
     profile_path = output / "policy-profile.json"
     profile_path.write_text(json.dumps(profile.model_dump(), indent=2))
 
+    from risk_landscaper.reports import build_ingest_report
+    meta = {
+        "model": config.model,
+        "policy_set": policy_file.name,
+        "timestamp": report.timestamp,
+        "source_document": policy_file.name,
+        "input_format": fmt,
+    }
+    build_ingest_report(profile, report, output / "ingest-report.html", meta)
+    typer.echo(f"Ingest report written to {output / 'ingest-report.html'}")
+
     # --- Stage 2: Detect domain ---
     from risk_landscaper.stages.detect_domain import detect_domain
     selected_domains = detect_domain(profile, client, config, report=report)
@@ -167,10 +178,18 @@ def run(
     typer.echo(f"Risk landscape written to {landscape_path}")
     typer.echo(f"  {len(landscape.risks)} unique risks, {len(landscape.framework_coverage)} frameworks")
 
+    from risk_landscaper.reports import build_risk_landscape_report
+    build_risk_landscape_report(landscape.model_dump(), output / "risk-landscape.html")
+    typer.echo(f"Risk landscape report written to {output / 'risk-landscape.html'}")
+
     # --- Write report ---
     report.token_usage = tracker.to_dict()
     report_path = output / "run-report.json"
     report_path.write_text(json.dumps(report.to_dict(), indent=2))
+
+    from risk_landscaper.reports import build_run_report_html
+    build_run_report_html(report.to_dict(), output / "run-report.html")
+    typer.echo(f"Run report written to {output / 'run-report.html'}")
 
     typer.echo(f"Token usage: {tracker.prompt_tokens:,} prompt + {tracker.completion_tokens:,} completion = {tracker.total_tokens:,} total ({tracker.calls} calls)")
     typer.echo("Done.")
