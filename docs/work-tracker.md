@@ -42,6 +42,8 @@ Status of the AIRO AI Card alignment implementation.
 - [x] 8 control type/targets inference tests
 - [x] 9 source type inference + incident linking tests
 - [x] 5 enrich_chains tests (primary filtering, policy context, merge, skip non-primary)
+- [x] 20 VAIR vocabulary matching tests (risk sources, consequences, impacts, impacted areas)
+- [x] 2 VAIR integration tests in build_landscape
 
 ### Documentation
 
@@ -55,7 +57,7 @@ Status of the AIRO AI Card alignment implementation.
 
 ### Causal Chain Population
 
-- [x] **VAIR vocabulary matching** — source type inference from `risk_type`. Full VAIR vocabulary matching deferred (no VAIR data in Nexus).
+- [x] **VAIR vocabulary matching** — full keyword matching from VAIR v1.0 ontology. Sources (22 types), consequences (7 types), impacts (9 types), impacted areas (5 types). Free-layer enrichment in `build_landscape`.
 - [x] **LLM-assisted chain synthesis** — `enrich_chains` stage for primary-relevance risks.
 - [x] **Incident linking** — `get_related_risk_incidents()` wired into `build_landscape`.
 - [ ] **Evaluation linking** — wire `EvaluationRef` population from lm-eval results or other eval sources.

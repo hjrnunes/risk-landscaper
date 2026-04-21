@@ -26,6 +26,7 @@ AIRO AI Card alignment — evolved the data model and pipeline to produce govern
 - **Causal chain population** — RiskCards now populated with `risk_sources`, `consequences`, `impacts`, and `incidents`.
   - Incident linking from AI Atlas Nexus knowledge graph (`get_related_risk_incidents`).
   - Source type inference from `risk_type` → VAIR vocabulary (`data`, `model`, `attack`, `organisational`, `performance`).
+  - VAIR v1.0 keyword matching — free-layer enrichment of consequences (7 types) and impacts (9 types) from risk description/concern text, no LLM calls.
   - Control type and targets inference from action description keywords.
   - LLM-assisted causal chain synthesis for primary-relevance risks (new `enrich_chains` pipeline stage). Skippable with `--skip-chain-enrichment`.
 
