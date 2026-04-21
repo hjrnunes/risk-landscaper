@@ -5,13 +5,16 @@ from risk_landscaper.models import (
     PolicyRiskMapping,
     PolicySourceRef,
     RiskCard,
+    RiskConsequence,
     RiskControl,
+    RiskImpact,
     RiskIncidentRef,
     RiskLandscape,
     RiskSource,
     KnowledgeBaseRef,
     WeakMatch,
 )
+from risk_landscaper.vair import match_all as vair_match_all
 
 WEAK_MATCH_THRESHOLD = 0.6
 
@@ -93,6 +96,29 @@ def _actions_to_controls(action_descriptions: list[str]) -> list[RiskControl]:
         for desc in action_descriptions
         if desc
     ]
+
+
+def _vair_enrich(description: str, concern: str) -> dict:
+    text = f"{description} {concern}"
+    matches = vair_match_all(text)
+    result: dict = {}
+    if matches["risk_sources"]:
+        best = matches["risk_sources"][0]
+        result["source_type"] = best.parent
+        result["source_subtypes"] = [m.id for m in matches["risk_sources"]]
+    if matches["consequences"]:
+        result["consequences"] = [
+            RiskConsequence(description=m.label)
+            for m in matches["consequences"]
+        ]
+    if matches["impacts"]:
+        area_matches = matches["impacted_areas"]
+        area = area_matches[0].label.lower() if area_matches else None
+        result["impacts"] = [
+            RiskImpact(description=m.label, area=area)
+            for m in matches["impacts"]
+        ]
+    return result
 
 
 def _collect_related_policies(
@@ -177,13 +203,20 @@ def build_risk_landscape(
                 [descriptor_raw] if descriptor_raw else []
             )
 
+            description = details.get("description") or ""
+            concern = details.get("concern") or ""
+
             source_type = _infer_source_type(details.get("risk_type"))
+            vair = _vair_enrich(description, concern)
+            if vair.get("source_type"):
+                source_type = vair["source_type"]
+
             baseline_source = (
                 [RiskSource(
-                    description=details.get("concern") or details.get("description") or "",
+                    description=concern or description,
                     source_type=source_type,
                 )]
-                if details.get("concern") or details.get("description")
+                if concern or description
                 else []
             )
 
@@ -192,13 +225,15 @@ def build_risk_landscape(
             risks.append(RiskCard(
                 risk_id=rm.risk_id,
                 risk_name=details.get("name") or rm.risk_name or rm.risk_id,
-                risk_description=details.get("description") or "",
-                risk_concern=details.get("concern") or "",
+                risk_description=description,
+                risk_concern=concern,
                 risk_framework=framework,
                 cross_mappings=related_risks.get(rm.risk_id, []),
                 risk_type=details.get("risk_type"),
                 descriptors=descriptors,
                 risk_sources=baseline_source,
+                consequences=vair.get("consequences", []),
+                impacts=vair.get("impacts", []),
                 controls=_actions_to_controls(actions),
                 related_policies=_collect_related_policies(rm.risk_id, mappings),
                 related_actions=actions,

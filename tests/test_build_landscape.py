@@ -521,3 +521,63 @@ def test_build_landscape_with_incidents():
     assert len(card.incidents) == 1
     assert card.incidents[0].name == "Bioweapon planning"
     assert card.incidents[0].status == "ongoing"
+
+
+def test_build_landscape_vair_enrichment():
+    from risk_landscaper.stages.build_landscape import build_risk_landscape
+
+    mappings = [
+        PolicyRiskMapping(
+            policy_concept="Fairness",
+            matched_risks=[
+                RiskMatch(risk_id="atlas-bias", risk_name="Bias",
+                          relevance="primary", justification="test"),
+            ],
+        ),
+    ]
+    risk_details_cache = {
+        "atlas-bias": {
+            "id": "atlas-bias", "name": "Bias",
+            "description": "Model exhibits systematic bias against protected groups",
+            "concern": "Discriminatory outputs and unfair treatment of users",
+            "risk_type": "output",
+        },
+    }
+    landscape = build_risk_landscape(
+        mappings=mappings, risk_details_cache=risk_details_cache,
+        model="test", run_slug="test", timestamp="t",
+    )
+    card = landscape.risks[0]
+    assert len(card.consequences) > 0
+    consequence_descs = [c.description for c in card.consequences]
+    assert "Bias" in consequence_descs
+    assert len(card.impacts) > 0
+    impact_descs = [i.description for i in card.impacts]
+    assert "Discriminatory Treatment" in impact_descs
+
+
+def test_build_landscape_vair_no_matches():
+    from risk_landscaper.stages.build_landscape import build_risk_landscape
+
+    mappings = [
+        PolicyRiskMapping(
+            policy_concept="General Policy",
+            matched_risks=[
+                RiskMatch(risk_id="r1", risk_name="R",
+                          relevance="primary", justification="test"),
+            ],
+        ),
+    ]
+    risk_details_cache = {
+        "r1": {
+            "id": "r1", "name": "R",
+            "description": "Generic risk entry",
+        },
+    }
+    landscape = build_risk_landscape(
+        mappings=mappings, risk_details_cache=risk_details_cache,
+        model="test", run_slug="test", timestamp="t",
+    )
+    card = landscape.risks[0]
+    assert card.consequences == []
+    assert card.impacts == []
