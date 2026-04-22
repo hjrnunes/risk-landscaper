@@ -419,9 +419,9 @@ def compare(
             typer.echo(f"Error: {profile_path} not found", err=True)
             raise typer.Exit(1)
 
-        from risk_landscaper.models import RiskLandscape as RiskLandscapeModel
+        from risk_landscaper.models import RiskLandscape as RiskLandscapeModel, PolicyProfile as PolicyProfileModel
         landscape = RiskLandscapeModel(**yaml.safe_load(landscape_path.read_text()))
-        profile = PolicyProfile(**json.loads(profile_path.read_text()))
+        profile = PolicyProfileModel(**json.loads(profile_path.read_text()))
         inputs.append((d.name, landscape, profile))
 
     from risk_landscaper.compare import build_comparison
