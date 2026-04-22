@@ -162,3 +162,18 @@ def test_export_missing_file():
     result = runner.invoke(app, ["export", "/nonexistent/file.yaml", "--output", "/tmp/out"])
     assert result.exit_code != 0
     assert "does not exist" in result.output
+
+
+def test_run_format_jsonld_flag(tmp_path):
+    """Verify --format jsonld is accepted as a valid CLI option."""
+    result = runner.invoke(app, [
+        "run", "/nonexistent/policy.json",
+        "--output", str(tmp_path / "out"),
+        "--base-url", "http://localhost:8000/v1",
+        "--model", "test",
+        "--nexus-base-dir", "/tmp/nexus",
+        "--format", "jsonld",
+    ])
+    # Will fail because policy file doesn't exist, but --format should be accepted
+    assert "no such option" not in result.output.lower()
+    assert "does not exist" in result.output

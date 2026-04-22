@@ -93,6 +93,7 @@ def run(
     input_format: str = typer.Option(None, "--input-format", help="Input format: markdown or json_array (auto-detected if omitted)"),
     skip_chain_enrichment: bool = typer.Option(False, "--skip-chain-enrichment", help="Skip LLM causal chain enrichment"),
     max_context: int = typer.Option(0, "--max-context", help="Model context window size in tokens (0 = no limit). When set, large documents are chunked to fit."),
+    output_format: str = typer.Option("yaml", "--format", "-f", help="Additional output format: yaml (default), jsonld, turtle"),
 ):
     """Run the risk landscaper pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains."""
     if not policy_file.exists():
@@ -276,6 +277,19 @@ def run(
     ))
     typer.echo(f"Risk landscape written to {landscape_path}")
     typer.echo(f"  {len(landscape.risks)} unique risks, {len(landscape.framework_coverage)} frameworks")
+
+    if output_format in ("jsonld", "turtle"):
+        from risk_landscaper.serialize import landscape_to_jsonld
+        doc = landscape_to_jsonld(landscape)
+        jsonld_path = output / "risk-landscape.jsonld"
+        jsonld_path.write_text(json.dumps(doc, indent=2))
+        typer.echo(f"JSON-LD written to {jsonld_path}")
+        if output_format == "turtle":
+            from risk_landscaper.serialize import landscape_to_turtle
+            ttl = landscape_to_turtle(landscape)
+            ttl_path = output / "risk-landscape.ttl"
+            ttl_path.write_text(ttl)
+            typer.echo(f"Turtle written to {ttl_path}")
 
     from risk_landscaper.reports import build_risk_landscape_report, build_ai_card_report
     build_risk_landscape_report(landscape.model_dump(), output / "risk-landscape.html")
