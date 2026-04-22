@@ -177,6 +177,20 @@ def test_stakeholder_involvement_fields():
     assert s.interests == ["safety", "privacy"]
 
 
+def test_stakeholder_trustworthy_interests():
+    s = Stakeholder(
+        name="Patient", roles=["airo:AISubject"],
+        interests=["safety", "privacy"],
+        trustworthy_interests=["privacy", "safety"],
+    )
+    assert s.trustworthy_interests == ["privacy", "safety"]
+
+
+def test_stakeholder_trustworthy_interests_defaults_empty():
+    s = Stakeholder(name="User", roles=["airo:AIUser"])
+    assert s.trustworthy_interests == []
+
+
 def test_policy_governance_function():
     p = Policy(
         policy_concept="Bias Testing",

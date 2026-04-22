@@ -35,6 +35,7 @@ class Stakeholder(BaseModel):
     output_control: Literal["challenge", "correct", "cannot_opt_out"] | None = None
     relationship: Literal["internal", "external"] | None = None
     interests: list[str] = []
+    trustworthy_interests: list[str] = []
 
 
 class AiSystem(BaseModel):
