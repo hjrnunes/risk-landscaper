@@ -1,6 +1,6 @@
 # tests/test_serialize.py
 from risk_landscaper.models import RiskLandscape, RiskCard, RiskSource, RiskConsequence, RiskImpact, RiskControl, RiskIncidentRef, EvaluationRef
-from risk_landscaper.serialize import landscape_to_jsonld
+from risk_landscaper.serialize import landscape_to_jsonld, SOURCE_TYPE_TO_VAIR, _vair_iri
 
 
 def test_empty_landscape_has_context_and_type():
@@ -207,3 +207,44 @@ def test_evaluations_serialize():
     assert ev["rdfs:comment"] == "TruthfulQA pass rate"
     assert ev["rl:metrics"] == {"pass_rate": 0.95}
     assert ev["rdfs:seeAlso"] == "https://example.com/eval"
+
+
+def test_all_source_type_parents_mapped():
+    expected = {
+        "attack": "vair:Attack",
+        "data": "vair:DataRiskSource",
+        "organisational": "vair:OrganisationalRiskSource",
+        "performance": "vair:PerformanceRiskSource",
+        "system": "vair:SystemRiskSource",
+    }
+    assert SOURCE_TYPE_TO_VAIR == expected
+
+
+def test_vair_iri_specific_types():
+    assert _vair_iri("AdversarialAttack") == "vair:AdversarialAttack"
+    assert _vair_iri("BiasedTrainingData") == "vair:BiasedTrainingData"
+    assert _vair_iri("Bias") == "vair:Bias"
+    assert _vair_iri("Death") == "vair:Death"
+    assert _vair_iri("Freedom") == "vair:Freedom"
+
+
+def test_vair_iri_unknown_returns_none():
+    assert _vair_iri("SomethingInvented") is None
+    assert _vair_iri("") is None
+
+
+def test_impact_unknown_harm_type_no_vair_iri():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                impacts=[
+                    RiskImpact(description="Custom harm", harm_type="CustomHarmType"),
+                ],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    imp = result["rl:hasRiskCard"][0]["airo:hasImpact"][0]
+    assert imp["@type"] == "airo:Impact"
