@@ -15,6 +15,7 @@ src/risk_landscaper/
   prompts.py             # Jinja2 prompt rendering
   reports.py             # HTML report generation (ingest, landscape, Risk Card, run)
   nexus.py               # Vendored risk index + query handlers (from nexus-mcp)
+  merge.py               # Multi-document PolicyProfile merging (name-keyed dedup)
   nexus_adapter.py       # Nexus payload -> PolicyProfile projection
   vair.py                # VAIR v1.0 vocabulary matching for causal chains
   stages/
@@ -40,6 +41,11 @@ docs/
 ```bash
 uv sync
 uv run risk-landscaper run policy.json -o output/ \
+  --base-url $REFINER_BASE_URL --model $REFINER_MODEL \
+  --nexus-base-dir $NEXUS_BASE_DIR
+
+# Multiple documents for the same org:
+uv run risk-landscaper run policy.pdf faq.md annex.docx -o output/ \
   --base-url $REFINER_BASE_URL --model $REFINER_MODEL \
   --nexus-base-dir $NEXUS_BASE_DIR
 ```
@@ -90,6 +96,7 @@ uv run pytest tests/test_models.py  # single file
 - VAIR vocabulary matching: keyword-based enrichment of causal chain types (sources, consequences, impacts, impacted areas) without LLM calls
 - Per-call debug logging via `debug.log_call()` when `--debug` is set
 - `RunReport` events with `report=None` default + `if report:` guards
+- Multi-document ingest: multiple files ingested independently, PolicyProfiles merged via `merge.py` (name-keyed dedup, enrichment union). `source_documents` provenance on Policy and PolicyProfile.
 - HTML reports generated alongside YAML/JSON artifacts (Tailwind + Alpine.js, `__REPORT_DATA__` JSON embedding)
 
 ### Prompt Templates

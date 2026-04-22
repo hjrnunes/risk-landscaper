@@ -2,7 +2,7 @@
 
 Policy-driven AI risk landscape generation, aligned with [AIRO](https://delaramglp.github.io/airo/) (AI Risk Ontology) and the [Risk Card](https://delaramglp.github.io/aicards/example/) documentation pattern.
 
-Takes policy documents (markdown, JSON, or AI Atlas Nexus payloads) and produces structured risk artifacts: a **PolicyProfile** (system envelope) and a **RiskLandscape** (risk analysis with RiskCards). Together these constitute a complete Risk Card.
+Takes one or more policy documents (markdown, JSON, PDF, DOCX, HTML, or AI Atlas Nexus payloads) and produces structured risk artifacts: a **PolicyProfile** (system envelope) and a **RiskLandscape** (risk analysis with RiskCards). Together these constitute a complete Risk Card. Multiple documents for the same organization are ingested independently and merged into a single profile.
 
 ## What It Does
 
@@ -59,6 +59,12 @@ uv run risk-landscaper run policy.json -o output/ \
   --model gemma-4-26b-a4b-it \
   --nexus-base-dir /path/to/ai-atlas-nexus
 
+# Multiple documents for the same org (PDF + markdown + annex)
+uv run risk-landscaper run policy.pdf faq.md annex.docx -o output/ \
+  --base-url http://localhost:8000/v1 \
+  --model gemma-4-26b-a4b-it \
+  --nexus-base-dir /path/to/ai-atlas-nexus
+
 # Skip optional passes (faster, less detail)
 uv run risk-landscaper run policy.json -o output/ \
   --base-url ... --model ... --nexus-base-dir ... \
@@ -84,6 +90,8 @@ uv run risk-landscaper schema -o schemas/
 - **PDF, DOCX, HTML** — converted to markdown via [markitdown](https://github.com/microsoft/markitdown), then processed as above. Requires `risk-landscaper[docs]` extra.
 - **JSON array** — `[{policy_concept, concept_definition}, ...]` (skips policy extraction pass)
 - **Nexus format** — `{ai_system, risks, risk_controls}` (pre-parsed, no ingest LLM calls; entity enrichment not available since there is no source document to extract from)
+
+Multiple files can be passed as positional arguments. Each document is ingested independently (with its own format detection), then the resulting `PolicyProfile` objects are merged — policies deduplicated by concept, entities merged by name. This supports mixed-format inputs (e.g., a PDF policy document alongside a markdown FAQ).
 
 ## Output
 
