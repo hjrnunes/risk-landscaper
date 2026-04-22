@@ -132,6 +132,30 @@ def main():
     if failed:
         print(f"Failed: {', '.join(failed)}")
     print(f"Output: {runs_dir}")
+
+    succeeded_dirs = [
+        runs_dir / name
+        for name, files in runs
+        if name not in failed
+    ]
+    if len(succeeded_dirs) >= 2:
+        compare_out = runs_dir / "_comparison"
+        compare_cmd = [
+            "uv", "run", "risk-landscaper", "compare",
+            *[str(d) for d in succeeded_dirs],
+            "-o", str(compare_out),
+        ]
+        print(f"\nRunning comparison across {len(succeeded_dirs)} landscapes...")
+        compare_result = subprocess.run(compare_cmd, capture_output=True, text=True)
+        if compare_result.returncode == 0:
+            print(f"  Comparison report: {compare_out / 'comparison-report.html'}")
+        else:
+            print(f"  Comparison failed:")
+            for line in (compare_result.stderr or compare_result.stdout).strip().splitlines()[-3:]:
+                print(f"    {line}")
+    else:
+        print("\nSkipping comparison (fewer than 2 successful runs)")
+
     sys.exit(1 if failed else 0)
 
 

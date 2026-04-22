@@ -8,14 +8,15 @@ Extracted from `taxonomy-refiner/risk-landscaper/`. The refiner downstream has i
 
 ```
 src/risk_landscaper/
-  cli.py                 # Typer CLI: `risk-landscaper run`
+  cli.py                 # Typer CLI: `risk-landscaper run`, `compare`, `export`, `schema`
   models.py              # Pydantic data model (v0.2, AIRO-aligned)
   llm.py                 # LLM client config, token tracking
   debug.py               # Per-call debug logging
   prompts.py             # Jinja2 prompt rendering
-  reports.py             # HTML report generation (ingest, landscape, Risk Card, run)
+  reports.py             # HTML report generation (ingest, landscape, Risk Card, run, comparison)
   nexus.py               # Vendored risk index + query handlers (from nexus-mcp)
   merge.py               # Multi-document PolicyProfile merging (name-keyed dedup)
+  compare.py             # Structural comparison of 2+ risk landscapes (no LLM)
   nexus_adapter.py       # Nexus payload -> PolicyProfile projection
   vair.py                # VAIR v1.0 vocabulary matching for causal chains
   stages/
@@ -100,6 +101,7 @@ uv run pytest tests/test_models.py  # single file
 - Multi-document ingest: multiple files ingested independently, PolicyProfiles merged via `merge.py` (name-keyed dedup, enrichment union). `source_documents` provenance on Policy and PolicyProfile.
 - HTML reports generated alongside YAML/JSON artifacts (Tailwind + Alpine.js, `__REPORT_DATA__` JSON embedding)
 - PROV-O provenance in JSON-LD: element-level `prov:wasAttributedTo` / `prov:wasGeneratedBy` on causal chain elements. Four agents (`rl:NexusKnowledgeGraph`, `rl:VAIRMatcher`, `rl:HeuristicEngine`, `rl:LLMAgent`), two activities (`rl:BuildLandscape`, `rl:EnrichChains`). Internal models keep the flat `provenance` string; PROV-O mapping lives in `serialize.py`.
+- Compare command: `risk-landscaper compare` takes 2+ run output directories, computes risk overlap / framework deltas / severity distribution via `compare.py`, produces comparison YAML + HTML report. No LLM calls. Battery script (`run_all_policies.py`) auto-runs compare after all individual runs complete.
 
 ### Prompt Templates
 

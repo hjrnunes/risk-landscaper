@@ -6,10 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **Comparison HTML report** — full self-contained comparison report template (`comparison_report_template.html`) using Tailwind CSS + Alpine.js. Nine sections: landscape overview cards, risk overlap summary, shared risks table with per-landscape risk level badges, collapsible unique risks per landscape, framework coverage matrix, risk level distribution grid, causal chain depth table, and collapsible coverage gaps. Handles 2+ landscapes with dynamic columns via `x-for`. Follows existing report template patterns (tooltip CSS, dark header, section cards).
-- **Compare CLI command** — `risk-landscaper compare` CLI command takes 2+ run output directories (each containing `risk-landscape.yaml` and `policy-profile.json`) and produces `comparison.yaml` + `comparison-report.html`. Error handling for missing directories, missing files, and insufficient inputs. 4 new tests.
-- **Comparison logic** — `compare.py` module with `build_comparison()` function. Takes a list of named `(name, RiskLandscape, PolicyProfile)` tuples and produces a `Comparison`: shared/unique risk identification, per-landscape risk level distribution, framework coverage, coverage gaps, and causal chain statistics. Pure set operations, no LLM calls. 10 new tests.
-- **Comparison data models** — `LandscapeSummary`, `SharedRisk`, `RiskRef`, `CausalChainStats`, and `Comparison` Pydantic models for comparing multiple risk landscapes. 6 new tests.
+- **Compare command** — `risk-landscaper compare` takes 2+ run output directories and produces a structural comparison: shared/unique risk identification, framework coverage delta, risk level distribution, causal chain depth stats, and coverage gaps. Outputs `comparison.yaml` + self-contained HTML report. No LLM calls. New models (`Comparison`, `LandscapeSummary`, `SharedRisk`, `RiskRef`, `CausalChainStats`), `compare.py` module, comparison report template. 20 new tests.
+- **Battery comparison** — `run_all_policies.py` auto-runs `risk-landscaper compare` after all individual runs complete, producing a cross-policy comparison in `_comparison/`.
 
 - **Trustworthy characteristics inference** — `RiskCard.trustworthy_characteristics` now populated during `build_landscape` from VAIR type matches and keyword heuristics. 11 ISO/IEC 24028 + EU AI Act characteristics: accuracy, robustness, cybersecurity, transparency, fairness, privacy, safety, accountability, controllability, reliability, resilience. Free-layer enrichment, no LLM calls. 19 new tests.
 
