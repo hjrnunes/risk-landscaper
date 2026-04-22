@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [0.2.0] - 2026-04-21
 
-AIRO AI Card alignment — evolved the data model and pipeline to produce governance-aware risk artifacts.
+AIRO Risk Card alignment — evolved the data model and pipeline to produce governance-aware risk artifacts.
 
 ### Added
 
@@ -29,7 +29,7 @@ AIRO AI Card alignment — evolved the data model and pipeline to produce govern
   - VAIR v1.0 keyword matching — free-layer enrichment of consequences (7 types) and impacts (9 types) from risk description/concern text, no LLM calls.
   - Control type and targets inference from action description keywords.
   - LLM-assisted causal chain synthesis for primary-relevance risks (new `enrich_chains` pipeline stage). Skippable with `--skip-chain-enrichment`.
-- **Causal chain in reports** — risk landscape report and AI card now render the full causal chain per risk: risk sources (with VAIR source type), consequences, impacts (with area and severity), typed controls (with targets), and linked incidents (with status and source URI). Collapsed preview badges show enrichment counts at a glance. New "Causal Chain Coverage" summary section in the risk landscape report.
+- **Causal chain in reports** — risk landscape report and Risk Card now render the full causal chain per risk: risk sources (with VAIR source type), consequences, impacts (with area and severity), typed controls (with targets), and linked incidents (with status and source URI). Collapsed preview badges show enrichment counts at a glance. New "Causal Chain Coverage" summary section in the risk landscape report.
 - **Run report event log** — full LLM call capture (prompts, responses, duration) in the event log. Stage timing for all pipeline stages. Rewritten run report template with per-stage token usage breakdown, collapsible LLM call inspection, and event rendering for all risk-landscaper stages (ingest, detect_domain, map_risks, build_landscape, enrich_chains).
 - **Entity enrichment (ingest pass 4)** — dedicated LLM pass enriches extracted entities with AIRO-grounded attributes. Stakeholders gain involvement, activity, awareness, output_control, relationship, and interests. AI systems gain modality, techniques, and automation_level. Organization gains governance_roles, management_system, certifications, and delegates. Regulatory references gain jurisdiction and reference. Skippable with `--skip-entity-enrichment`.
 - **Assessment stage** — new post-pipeline stage computes risk levels and AIMS coverage without LLM calls.
@@ -40,7 +40,7 @@ AIRO AI Card alignment — evolved the data model and pipeline to produce govern
 - **VAIR provenance documentation** — `vair.py` module docstring documents the source ontology (VAIR v1.0, CC-BY-4.0, https://w3id.org/vair), authorship, and the boundary between ontology-derived types and project-specific keywords.
 - **Vendored nexus-mcp** — `RiskIndex`, `build_structural_context`, and `create_tool_handlers` extracted into `nexus.py`. Removed `nexus-mcp` path dependency; depends directly on `ai-atlas-nexus` (git) + `chromadb`.
 - **Document conversion** — PDF, DOCX, HTML input support via [markitdown](https://github.com/microsoft/markitdown). Optional `[docs]` extra (`pip install 'risk-landscaper[docs]'`). Auto-detected by file extension, converted to markdown before ingest.
-- **Data provenance tracking** — `provenance` field (`nexus`, `vair`, `heuristic`, `llm`) on causal chain items (`RiskSource`, `RiskConsequence`, `RiskImpact`, `RiskControl`, `RiskIncidentRef`). Tagged at creation time in `build_landscape` and `enrich_chains`. Rendered as color-coded badges in risk landscape and AI card reports with legend.
+- **Data provenance tracking** — `provenance` field (`nexus`, `vair`, `heuristic`, `llm`) on causal chain items (`RiskSource`, `RiskConsequence`, `RiskImpact`, `RiskControl`, `RiskIncidentRef`). Tagged at creation time in `build_landscape` and `enrich_chains`. Rendered as color-coded badges in risk landscape and Risk Card reports with legend.
 - **Document chunking** — large documents that exceed the model context window are automatically split by markdown sections and processed in chunks. `--max-context` CLI option sets the model's context window size to enable chunking. Policies are deduplicated across chunks; enrichments are merged.
 - **Frontier safety policies** — 24 policy documents (18 PDFs + 2 markdown) from 12 organizations (Anthropic, OpenAI, DeepMind, Meta, Microsoft, xAI, NVIDIA, Amazon, G42, Cohere, NAVER, Magic) in `policy_examples/frontier_safety/`.
 - **Battery script subdirectory support** — `run_all_policies.py` gains `-d` flag to target a subdirectory of `policy_examples/`, with `just run-frontier` recipe for frontier safety policies. Uses `rglob` to discover files recursively.

@@ -13,7 +13,7 @@ src/risk_landscaper/
   llm.py                 # LLM client config, token tracking
   debug.py               # Per-call debug logging
   prompts.py             # Jinja2 prompt rendering
-  reports.py             # HTML report generation (ingest, landscape, AI card, run)
+  reports.py             # HTML report generation (ingest, landscape, Risk Card, run)
   nexus.py               # Vendored risk index + query handlers (from nexus-mcp)
   nexus_adapter.py       # Nexus payload -> PolicyProfile projection
   vair.py                # VAIR v1.0 vocabulary matching for causal chains
@@ -31,7 +31,7 @@ src/risk_landscaper/
 tests/                   # pytest suite (276 tests)
 policy_examples/         # 11 policy files across 6 domains + 24 frontier safety policies
 docs/
-  design.md              # AIRO AI Card alignment design
+  design.md              # AIRO Risk Card alignment design
   work-tracker.md        # Implementation status and remaining work
 ```
 

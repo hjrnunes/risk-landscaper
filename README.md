@@ -1,8 +1,8 @@
 # Risk Landscaper
 
-Policy-driven AI risk landscape generation, aligned with [AIRO](https://delaramglp.github.io/airo/) (AI Risk Ontology) and the [AI Card](https://delaramglp.github.io/aicards/example/) documentation pattern.
+Policy-driven AI risk landscape generation, aligned with [AIRO](https://delaramglp.github.io/airo/) (AI Risk Ontology) and the [Risk Card](https://delaramglp.github.io/aicards/example/) documentation pattern.
 
-Takes policy documents (markdown, JSON, or AI Atlas Nexus payloads) and produces structured risk artifacts: a **PolicyProfile** (system envelope) and a **RiskLandscape** (risk analysis with RiskCards). Together these constitute a complete AI Card.
+Takes policy documents (markdown, JSON, or AI Atlas Nexus payloads) and produces structured risk artifacts: a **PolicyProfile** (system envelope) and a **RiskLandscape** (risk analysis with RiskCards). Together these constitute a complete Risk Card.
 
 ## What It Does
 
@@ -94,7 +94,7 @@ output/
   run-report.json             # Execution metadata + token usage
   ingest-report.html          # Ingest visualization
   risk-landscape.html         # Risk landscape report with causal chains
-  ai-card.html                # AI Card report
+  ai-card.html                # Risk Card report
   run-report.html             # Pipeline execution report with LLM call details
 ```
 

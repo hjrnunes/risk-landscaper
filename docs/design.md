@@ -1,4 +1,4 @@
-# Risk Landscaper Design — AIRO AI Card Alignment
+# Risk Landscaper Design — AIRO Risk Card Alignment
 
 This document captures the design for evolving the risk landscaper into an AIRO-aligned AI risk documentation tool.
 
@@ -27,7 +27,7 @@ output/
   run-report.json         <- execution metadata
 ```
 
-Together, `policy-profile.json` + `risk-landscape.yaml` constitute a complete AI Card.
+Together, `policy-profile.json` + `risk-landscape.yaml` constitute a complete Risk Card.
 
 ## Data Model (v0.2)
 

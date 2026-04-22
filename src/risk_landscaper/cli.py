@@ -282,7 +282,7 @@ def run(
     typer.echo(f"Risk landscape report written to {output / 'risk-landscape.html'}")
 
     build_ai_card_report(profile, landscape, output / "ai-card.html")
-    typer.echo(f"AI Card written to {output / 'ai-card.html'}")
+    typer.echo(f"Risk Card written to {output / 'ai-card.html'}")
 
     # --- Write report ---
     report.token_usage = tracker.to_dict()

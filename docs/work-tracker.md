@@ -1,6 +1,6 @@
 # Work Tracker
 
-Status of the AIRO AI Card alignment implementation.
+Status of the AIRO Risk Card alignment implementation.
 
 ## Done
 
@@ -30,7 +30,7 @@ Status of the AIRO AI Card alignment implementation.
 
 - [x] Ingest report — policy profile visualization
 - [x] Risk landscape report — risk cards with causal chain rendering, coverage summary
-- [x] AI Card report — combined profile + landscape view
+- [x] Risk Card report — combined profile + landscape view
 - [x] Run report — per-stage token usage, collapsible LLM call inspection, event log
 - [x] Tailwind + Alpine.js, `__REPORT_DATA__` JSON embedding pattern
 
