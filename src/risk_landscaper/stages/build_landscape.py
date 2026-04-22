@@ -14,7 +14,7 @@ from risk_landscaper.models import (
     KnowledgeBaseRef,
     WeakMatch,
 )
-from risk_landscaper.vair import match_all as vair_match_all
+from risk_landscaper.vair import match_all as vair_match_all, match_trustworthy_characteristics
 
 WEAK_MATCH_THRESHOLD = 0.6
 
@@ -119,6 +119,9 @@ def _vair_enrich(description: str, concern: str) -> dict:
             RiskImpact(description=m.label, area=area, provenance="vair")
             for m in matches["impacts"]
         ]
+    chars = match_trustworthy_characteristics(text, matches)
+    if chars:
+        result["trustworthy_characteristics"] = chars
     return result
 
 
@@ -237,6 +240,7 @@ def build_risk_landscape(
                 risk_sources=baseline_source,
                 consequences=vair.get("consequences", []),
                 impacts=vair.get("impacts", []),
+                trustworthy_characteristics=vair.get("trustworthy_characteristics", []),
                 controls=_actions_to_controls(actions),
                 related_policies=_collect_related_policies(rm.risk_id, mappings),
                 related_actions=actions,

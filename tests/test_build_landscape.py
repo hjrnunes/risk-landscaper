@@ -581,3 +581,84 @@ def test_build_landscape_vair_no_matches():
     card = landscape.risks[0]
     assert card.consequences == []
     assert card.impacts == []
+
+
+def test_build_landscape_populates_trustworthy_characteristics():
+    from risk_landscaper.stages.build_landscape import build_risk_landscape
+
+    mappings = [
+        PolicyRiskMapping(
+            policy_concept="Fairness Policy",
+            matched_risks=[
+                RiskMatch(risk_id="atlas-bias", risk_name="Bias",
+                          relevance="primary", justification="test"),
+            ],
+        ),
+    ]
+    risk_details_cache = {
+        "atlas-bias": {
+            "id": "atlas-bias", "name": "Bias",
+            "description": "Model exhibits systematic bias against protected groups",
+            "concern": "Discriminatory outputs and unfair treatment of users",
+            "risk_type": "output",
+        },
+    }
+    landscape = build_risk_landscape(
+        mappings=mappings, risk_details_cache=risk_details_cache,
+        model="test", run_slug="test", timestamp="t",
+    )
+    card = landscape.risks[0]
+    assert "fairness" in card.trustworthy_characteristics
+
+
+def test_build_landscape_trustworthy_empty_for_generic_risk():
+    from risk_landscaper.stages.build_landscape import build_risk_landscape
+
+    mappings = [
+        PolicyRiskMapping(
+            policy_concept="General",
+            matched_risks=[
+                RiskMatch(risk_id="r1", risk_name="R",
+                          relevance="primary", justification="test"),
+            ],
+        ),
+    ]
+    risk_details_cache = {
+        "r1": {"id": "r1", "name": "R", "description": "Generic risk entry"},
+    }
+    landscape = build_risk_landscape(
+        mappings=mappings, risk_details_cache=risk_details_cache,
+        model="test", run_slug="test", timestamp="t",
+    )
+    card = landscape.risks[0]
+    assert card.trustworthy_characteristics == []
+
+
+def test_build_landscape_trustworthy_multiple():
+    from risk_landscaper.stages.build_landscape import build_risk_landscape
+
+    mappings = [
+        PolicyRiskMapping(
+            policy_concept="Security",
+            matched_risks=[
+                RiskMatch(risk_id="r1", risk_name="R",
+                          relevance="primary", justification="test"),
+            ],
+        ),
+    ]
+    risk_details_cache = {
+        "r1": {
+            "id": "r1", "name": "R",
+            "description": "Cyberattack with lack of transparency and biased outcomes",
+            "concern": "System vulnerability exploited leading to privacy breach",
+        },
+    }
+    landscape = build_risk_landscape(
+        mappings=mappings, risk_details_cache=risk_details_cache,
+        model="test", run_slug="test", timestamp="t",
+    )
+    card = landscape.risks[0]
+    assert "cybersecurity" in card.trustworthy_characteristics
+    assert "transparency" in card.trustworthy_characteristics
+    assert "fairness" in card.trustworthy_characteristics
+    assert "privacy" in card.trustworthy_characteristics
