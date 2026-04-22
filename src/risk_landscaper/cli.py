@@ -319,3 +319,35 @@ def schema(
         for name, s in schemas.items():
             typer.echo(f"--- {name} ---")
             typer.echo(json.dumps(s, indent=2))
+
+
+@app.command()
+def export(
+    input_file: Path = typer.Argument(..., help="Risk landscape YAML file to convert"),
+    output: Path = typer.Option(..., "--output", "-o", help="Output directory"),
+    fmt: str = typer.Option("jsonld", "--format", "-f", help="Output format: jsonld or turtle"),
+):
+    """Export a risk landscape to JSON-LD or Turtle format."""
+    if not input_file.exists():
+        typer.echo(f"Error: {input_file} does not exist", err=True)
+        raise typer.Exit(1)
+
+    from risk_landscaper.models import RiskLandscape
+    from risk_landscaper.serialize import landscape_to_jsonld
+
+    raw = yaml.safe_load(input_file.read_text())
+    landscape = RiskLandscape(**raw)
+
+    output.mkdir(parents=True, exist_ok=True)
+
+    if fmt == "turtle":
+        from risk_landscaper.serialize import landscape_to_turtle
+        ttl = landscape_to_turtle(landscape)
+        out_path = output / "risk-landscape.ttl"
+        out_path.write_text(ttl)
+        typer.echo(f"Turtle written to {out_path}")
+    else:
+        doc = landscape_to_jsonld(landscape)
+        out_path = output / "risk-landscape.jsonld"
+        out_path.write_text(json.dumps(doc, indent=2))
+        typer.echo(f"JSON-LD written to {out_path}")

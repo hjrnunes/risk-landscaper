@@ -119,3 +119,46 @@ def test_load_input_markdown_not_converted(tmp_path):
         mock_convert.assert_not_called()
         assert fmt == "markdown"
         assert text == "# My Policy\n\nContent here."
+
+
+# ---------------------------------------------------------------------------
+# Export subcommand
+# ---------------------------------------------------------------------------
+
+def test_export_jsonld(tmp_path):
+    import yaml
+    from risk_landscaper.models import RiskLandscape, RiskCard
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[RiskCard(risk_id="test-risk", risk_name="Test Risk")],
+    )
+    yaml_file = tmp_path / "risk-landscape.yaml"
+    yaml_file.write_text(yaml.dump(landscape.model_dump(), default_flow_style=False))
+
+    out_dir = tmp_path / "out"
+    result = runner.invoke(app, ["export", str(yaml_file), "--format", "jsonld", "--output", str(out_dir)])
+    assert result.exit_code == 0
+    jsonld_path = out_dir / "risk-landscape.jsonld"
+    assert jsonld_path.exists()
+    data = json.loads(jsonld_path.read_text())
+    assert "@context" in data
+    assert data["rl:hasRiskCard"][0]["@id"] == "nexus:test-risk"
+
+
+def test_export_default_format(tmp_path):
+    import yaml
+    from risk_landscaper.models import RiskLandscape
+    landscape = RiskLandscape(run_slug="test-run")
+    yaml_file = tmp_path / "risk-landscape.yaml"
+    yaml_file.write_text(yaml.dump(landscape.model_dump(), default_flow_style=False))
+
+    out_dir = tmp_path / "out"
+    result = runner.invoke(app, ["export", str(yaml_file), "--output", str(out_dir)])
+    assert result.exit_code == 0
+    assert (out_dir / "risk-landscape.jsonld").exists()
+
+
+def test_export_missing_file():
+    result = runner.invoke(app, ["export", "/nonexistent/file.yaml", "--output", "/tmp/out"])
+    assert result.exit_code != 0
+    assert "does not exist" in result.output

@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
   - Controls, incidents, evaluations serialization: control type to AIRO property mapping (`detect` -> `airo:detectsRiskConcept`, `evaluate` -> `rl:evaluatesRiskConcept`, `mitigate` -> `airo:mitigatesRiskConcept`, `eliminate` -> `airo:eliminatesRiskConcept`), incidents as `dpv:Incident`, evaluations as `rl:Evaluation` (3 tests).
   - 9 tests total covering complete RiskCard serialization to JSON-LD.
 - **Turtle serialization** — `landscape_to_turtle()` function converts RiskLandscape to RDF Turtle format via optional `rdflib` dependency. Parses JSON-LD through rdflib's JSON-LD parser and serializes to Turtle. Optional `[rdf]` extra (`pip install 'risk-landscaper[rdf]'`). Raises helpful ImportError when rdflib not installed. 2 tests covering successful turtle generation and graceful error handling.
+- **Export subcommand** — `risk-landscaper export` CLI command converts existing risk landscape YAML files to JSON-LD or Turtle format. `--format` flag defaults to `jsonld`, also supports `turtle`. Outputs to `risk-landscape.jsonld` or `risk-landscape.ttl` in the specified directory. 3 tests covering JSON-LD export, default format behavior, and missing file handling.
 
 ## [0.2.0] - 2026-04-21
 
