@@ -164,6 +164,31 @@ def test_export_missing_file():
     assert "does not exist" in result.output
 
 
+def test_run_multiple_missing_files():
+    result = runner.invoke(app, [
+        "run", "/nonexistent/a.md", "/nonexistent/b.md",
+        "--output", "/tmp/out",
+        "--base-url", "http://localhost:8000/v1",
+        "--model", "test",
+        "--nexus-base-dir", "/tmp/nexus",
+    ])
+    assert result.exit_code != 0
+    assert "does not exist" in result.output
+
+
+def test_run_single_file_still_works():
+    """Single positional file should still be accepted."""
+    result = runner.invoke(app, [
+        "run", "/nonexistent/policy.json",
+        "--output", "/tmp/out",
+        "--base-url", "http://localhost:8000/v1",
+        "--model", "test",
+        "--nexus-base-dir", "/tmp/nexus",
+    ])
+    assert result.exit_code != 0
+    assert "does not exist" in result.output
+
+
 def test_run_format_jsonld_flag(tmp_path):
     """Verify --format jsonld is accepted as a valid CLI option."""
     result = runner.invoke(app, [

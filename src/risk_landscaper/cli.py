@@ -79,7 +79,7 @@ def _create_risk_handlers(nexus_base_dir: str, nexus_chroma_dir: Path) -> dict:
 
 @app.command()
 def run(
-    policy_file: Path = typer.Argument(..., help="Policy document (.md/.txt/.json/.pdf/.docx/.html)"),
+    policy_files: list[Path] = typer.Argument(..., help="Policy document(s) (.md/.txt/.json/.pdf/.docx/.html)"),
     output: Path = typer.Option(..., "--output", "-o", help="Output directory"),
     base_url: str = typer.Option(None, "--base-url", envvar="REFINER_BASE_URL", help="LLM API base URL"),
     model: str = typer.Option(None, "--model", envvar="REFINER_MODEL", help="LLM model name"),
@@ -96,9 +96,10 @@ def run(
     output_format: str = typer.Option("yaml", "--format", "-f", help="Additional output format: yaml (default), jsonld, turtle"),
 ):
     """Run the risk landscaper pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains."""
-    if not policy_file.exists():
-        typer.echo(f"Error: {policy_file} does not exist", err=True)
-        raise typer.Exit(1)
+    for pf in policy_files:
+        if not pf.exists():
+            typer.echo(f"Error: {pf} does not exist", err=True)
+            raise typer.Exit(1)
 
     if not base_url or not model:
         typer.echo("Error: --base-url and --model are required (or set REFINER_BASE_URL / REFINER_MODEL)", err=True)
@@ -113,9 +114,10 @@ def run(
     client = create_client(config, tracker=tracker)
     debug.configure(debug_dir)
 
+    policy_set_name = ", ".join(pf.name for pf in policy_files)
     report = RunReport(
         model=config.model,
-        policy_set=policy_file.name,
+        policy_set=policy_set_name,
         timestamp=datetime.now(timezone.utc).isoformat(),
     )
 
@@ -130,29 +132,52 @@ def run(
         })
 
     # --- Stage 1: Ingest ---
-    text, detected_format, pre_parsed = _load_input(policy_file)
-    fmt = input_format or detected_format
+    from risk_landscaper.stages.ingest import ingest as run_ingest
 
-    t_stage = time.monotonic()
-    if pre_parsed is not None:
-        profile = pre_parsed
-        typer.echo(f"Loaded pre-parsed profile: {len(profile.policies)} policies")
-        _stage_event("ingest", "stage_completed", t_stage, skipped=True)
-        report.stages_completed.append("ingest")
+    profiles_to_merge: list[PolicyProfile] = []
+    source_names: list[str] = []
+
+    for pf in policy_files:
+        text, detected_format, pre_parsed = _load_input(pf)
+        fmt = input_format or detected_format
+        source_names.append(pf.name)
+
+        t_stage = time.monotonic()
+        if pre_parsed is not None:
+            profiles_to_merge.append(pre_parsed)
+            typer.echo(f"Loaded pre-parsed profile from {pf.name}: {len(pre_parsed.policies)} policies")
+            _stage_event("ingest", "document_ingested", t_stage, document=pf.name, skipped=True)
+        else:
+            typer.echo(f"Ingesting {pf.name} (format: {fmt})...")
+            p = run_ingest(
+                text, fmt, client, config,
+                skip_enrichment=skip_enrichment,
+                skip_entity_enrichment=skip_entity_enrichment,
+                report=report,
+            )
+            _stage_event("ingest", "document_ingested", t_stage,
+                         document=pf.name, policies_extracted=len(p.policies))
+            profiles_to_merge.append(p)
+            typer.echo(f"  Organization: {p.organization.name if p.organization else ''}")
+            typer.echo(f"  Domain: {p.domain}")
+            typer.echo(f"  Policies: {len(p.policies)}")
+
+    if len(profiles_to_merge) > 1:
+        from risk_landscaper.merge import merge_profiles
+        t_stage = time.monotonic()
+        profile = merge_profiles(profiles_to_merge, source_names)
+        _stage_event("ingest", "profiles_merged", t_stage,
+                     document_count=len(profiles_to_merge),
+                     total_policies=len(profile.policies))
+        typer.echo(f"Merged {len(profiles_to_merge)} documents: {len(profile.policies)} policies")
+    elif profiles_to_merge:
+        profile = profiles_to_merge[0]
+        profile = profile.model_copy(update={"source_documents": source_names})
     else:
-        from risk_landscaper.stages.ingest import ingest
-        typer.echo(f"Ingesting {policy_file.name} (format: {fmt})...")
-        profile = ingest(
-            text, fmt, client, config,
-            skip_enrichment=skip_enrichment,
-            skip_entity_enrichment=skip_entity_enrichment,
-            report=report,
-        )
-        _stage_event("ingest", "stage_completed", t_stage)
-        report.stages_completed.append("ingest")
-        typer.echo(f"  Organization: {profile.organization.name if profile.organization else ''}")
-        typer.echo(f"  Domain: {profile.domain}")
-        typer.echo(f"  Policies: {len(profile.policies)}")
+        typer.echo("Error: no documents to process", err=True)
+        raise typer.Exit(1)
+
+    report.stages_completed.append("ingest")
 
     profile_path = output / "policy-profile.json"
     profile_path.write_text(json.dumps(profile.model_dump(), indent=2))
@@ -160,9 +185,9 @@ def run(
     from risk_landscaper.reports import build_ingest_report
     meta = {
         "model": config.model,
-        "policy_set": policy_file.name,
+        "policy_set": policy_set_name,
         "timestamp": report.timestamp,
-        "source_document": policy_file.name,
+        "source_documents": source_names,
         "input_format": fmt,
     }
     build_ingest_report(profile, report, output / "ingest-report.html", meta)
@@ -233,7 +258,7 @@ def run(
         risk_incidents=risk_incidents,
         selected_domains=selected_domains,
         model=config.model,
-        run_slug=policy_file.stem,
+        run_slug=policy_files[0].stem,
         timestamp=report.timestamp,
         coverage_gaps=coverage_gaps,
         policy_profile=profile,

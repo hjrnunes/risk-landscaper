@@ -13,6 +13,7 @@ All notable changes to this project will be documented in this file.
 - **`--format` flag on `run`** — `risk-landscaper run --format jsonld` or `--format turtle` writes additional serialization alongside YAML output.
 - **Merge primitives** — `merge.py` module with generic helpers (`_union_lists`, `_merge_by_key`) and per-type merge functions (`_merge_organizations`, `_merge_stakeholders`, `_merge_ai_systems`, `_merge_regulations`) for multi-document profile merging. 14 tests.
 - **Policy merge and `merge_profiles` orchestrator** — `_merge_policies` merges policies by exact `policy_concept` match with boundary example deduplication, longer definition preference, first-non-None scalar wins, and list union. `merge_profiles` merges multiple `PolicyProfile`s into one: organizations by name, entities case-insensitive by name, domain keeps longest, policies concept-keyed. Provenance tracked via `source_documents`. 9 tests (23 total in `test_merge.py`).
+- **Multi-file CLI input** — `risk-landscaper run` now accepts multiple policy documents as positional arguments (`policy_files: list[Path]`). Each file is ingested independently, then merged via `merge_profiles` when multiple documents are provided. Single-file usage unchanged. Reports track `source_documents` list. 2 new CLI tests (17 total in `test_cli.py`).
 
 ## [0.2.0] - 2026-04-21
 
