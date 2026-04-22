@@ -283,3 +283,49 @@ def test_provenance_serializes():
     assert prov["rl:governanceFunction"] == "evaluate"
     assert prov["rl:aimsActivity"] == ["aimsA6", "aimsA8"]
     assert prov["rl:reviewStatus"] == "draft"
+
+
+def test_turtle_output():
+    import pytest
+    rdflib = pytest.importorskip("rdflib")
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test Risk",
+                consequences=[
+                    RiskConsequence(description="Bad outcome", severity="high"),
+                ],
+            ),
+        ],
+    )
+    from risk_landscaper.serialize import landscape_to_turtle
+    ttl = landscape_to_turtle(landscape)
+    assert isinstance(ttl, str)
+    assert len(ttl) > 0
+    g = rdflib.Graph()
+    g.parse(data=ttl, format="turtle")
+    assert len(g) > 0
+    airo_ns = rdflib.Namespace("https://w3id.org/airo#")
+    risk_type_triples = list(g.triples((None, rdflib.RDF.type, airo_ns.Risk)))
+    assert len(risk_type_triples) == 1
+
+
+def test_turtle_without_rdflib_raises():
+    import pytest
+    from unittest.mock import patch
+    import builtins
+
+    original_import = builtins.__import__
+
+    def mock_import(name, *args, **kwargs):
+        if name == "rdflib":
+            raise ImportError("No module named 'rdflib'")
+        return original_import(name, *args, **kwargs)
+
+    landscape = RiskLandscape(run_slug="test-run")
+    from risk_landscaper.serialize import landscape_to_turtle
+
+    with patch("builtins.__import__", side_effect=mock_import):
+        with pytest.raises(ImportError, match="rdflib"):
+            landscape_to_turtle(landscape)

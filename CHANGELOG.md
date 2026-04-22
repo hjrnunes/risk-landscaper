@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
   - Causal chain serialization: risk sources (with VAIR type mapping), consequences, impacts (with VAIR harm types and impacted areas) (3 tests).
   - Controls, incidents, evaluations serialization: control type to AIRO property mapping (`detect` -> `airo:detectsRiskConcept`, `evaluate` -> `rl:evaluatesRiskConcept`, `mitigate` -> `airo:mitigatesRiskConcept`, `eliminate` -> `airo:eliminatesRiskConcept`), incidents as `dpv:Incident`, evaluations as `rl:Evaluation` (3 tests).
   - 9 tests total covering complete RiskCard serialization to JSON-LD.
+- **Turtle serialization** — `landscape_to_turtle()` function converts RiskLandscape to RDF Turtle format via optional `rdflib` dependency. Parses JSON-LD through rdflib's JSON-LD parser and serializes to Turtle. Optional `[rdf]` extra (`pip install 'risk-landscaper[rdf]'`). Raises helpful ImportError when rdflib not installed. 2 tests covering successful turtle generation and graceful error handling.
 
 ## [0.2.0] - 2026-04-21
 

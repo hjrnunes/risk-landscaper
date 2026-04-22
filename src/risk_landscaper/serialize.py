@@ -1,6 +1,8 @@
 # src/risk_landscaper/serialize.py
 from __future__ import annotations
 
+import json
+
 from risk_landscaper.models import RiskLandscape
 from risk_landscaper.vair import RISK_SOURCES, CONSEQUENCES, IMPACTS, IMPACTED_AREAS
 
@@ -199,3 +201,17 @@ def landscape_to_jsonld(landscape: RiskLandscape) -> dict:
     if landscape.provenance:
         doc["rl:provenance"] = _serialize_provenance(landscape.provenance)
     return doc
+
+
+def landscape_to_turtle(landscape: RiskLandscape) -> str:
+    try:
+        import rdflib
+    except ImportError:
+        raise ImportError(
+            "Turtle serialization requires rdflib. "
+            "Install it with: pip install 'risk-landscaper[rdf]'"
+        )
+    doc = landscape_to_jsonld(landscape)
+    g = rdflib.Graph()
+    g.parse(data=json.dumps(doc), format="json-ld")
+    return g.serialize(format="turtle")

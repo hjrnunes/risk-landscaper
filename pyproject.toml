@@ -19,6 +19,9 @@ risk-landscaper = "risk_landscaper.cli:app"
 
 [project.optional-dependencies]
 docs = ["markitdown[pdf,docx]>=0.1.1"]
+rdf = [
+    "rdflib>=7.0",
+]
 
 [build-system]
 requires = ["hatchling"]
