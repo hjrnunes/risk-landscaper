@@ -2,10 +2,480 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Comparison Report</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+
+    /* Tooltip */
+    .tip {
+      position: relative;
+      cursor: help;
+      border-bottom: 1px dotted #9ca3af;
+    }
+    .tip::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1f2937;
+      color: #f9fafb;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.4;
+      padding: 6px 10px;
+      border-radius: 6px;
+      white-space: normal;
+      width: max-content;
+      max-width: 320px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s;
+      z-index: 50;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+    .tip:hover::after { opacity: 1; }
+    .tip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #e5e7eb;
+      color: #6b7280;
+      font-size: 10px;
+      font-weight: 700;
+      font-style: normal;
+      line-height: 1;
+      margin-left: 4px;
+      flex-shrink: 0;
+      cursor: help;
+      vertical-align: middle;
+    }
+  </style>
 </head>
-<body>
-  <h1>Comparison Report</h1>
-  <pre>__REPORT_DATA__</pre>
+<body class="bg-gray-100 min-h-screen" x-data="reportApp()" x-cloak>
+
+  <!-- Header -->
+  <header class="bg-gray-900 text-white px-6 py-4 shadow-lg">
+    <div class="max-w-screen-xl mx-auto">
+      <h1 class="text-2xl font-bold tracking-tight">Comparison Report</h1>
+      <p class="text-gray-400 text-sm mt-0.5">
+        <template x-for="(ls, idx) in data.landscapes" :key="ls.name">
+          <span>
+            <span x-text="ls.name"></span><span x-show="idx < data.landscapes.length - 1">, </span>
+          </span>
+        </template>
+        &mdash; <span x-text="data.timestamp || '?'"></span>
+      </p>
+    </div>
+  </header>
+
+  <div class="max-w-screen-xl mx-auto p-6 space-y-6">
+
+    <!-- Overview Cards -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <span class="tip" data-tip="Summary of each landscape included in this comparison.">Landscapes</span>
+        <span class="tip-icon tip" data-tip="One card per landscape showing organization, domain, risk and policy counts.">i</span>
+      </h2>
+      <div class="grid gap-4" :class="`grid-cols-1 md:grid-cols-${Math.min(data.landscapes.length, 4)}`">
+        <template x-for="ls in data.landscapes" :key="ls.name">
+          <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
+            <h3 class="font-semibold text-gray-900 mb-1" x-text="ls.name"></h3>
+            <p class="text-sm text-gray-600 mb-2" x-text="ls.organization || 'Unknown organization'"></p>
+            <div class="flex flex-wrap gap-1 mb-3">
+              <template x-for="d in ls.domain || []" :key="d">
+                <span class="px-2 py-0.5 rounded text-xs bg-indigo-100 text-indigo-800" x-text="d"></span>
+              </template>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-center">
+              <div class="tip bg-white rounded p-2" data-tip="Total risks in this landscape.">
+                <p class="text-xl font-bold text-indigo-600" x-text="ls.risk_count"></p>
+                <p class="text-[10px] text-gray-400 mt-0.5">Risks</p>
+              </div>
+              <div class="tip bg-white rounded p-2" data-tip="Total policy concepts in this landscape.">
+                <p class="text-xl font-bold text-teal-600" x-text="ls.policy_count"></p>
+                <p class="text-[10px] text-gray-400 mt-0.5">Policies</p>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- Risk Overlap Summary -->
+    <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <span class="tip" data-tip="Overlap analysis: risks shared across all landscapes vs. risks unique to each.">Risk Overlap</span>
+        <span class="tip-icon tip" data-tip="Count of shared and unique risks across all landscapes.">i</span>
+      </h2>
+      <div class="grid gap-4" :class="`grid-cols-1 md:grid-cols-${Math.min(names.length + 1, 5)}`">
+        <div class="tip text-center p-4 bg-gray-50 rounded-lg" data-tip="Risks that appear in every landscape included in this comparison.">
+          <p class="text-3xl font-bold text-indigo-600" x-text="data.shared_risks.length"></p>
+          <p class="text-xs text-gray-400 mt-1">Shared Risks</p>
+        </div>
+        <template x-for="name in names" :key="name">
+          <div class="tip text-center p-4 bg-gray-50 rounded-lg" :data-tip="`Risks found only in ${name}, not in any other landscape.`">
+            <p class="text-3xl font-bold text-orange-600" x-text="(data.unique_risks[name] || []).length"></p>
+            <p class="text-xs text-gray-400 mt-1">Unique to <span x-text="name"></span></p>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- Shared Risks Table -->
+    <section x-show="data.shared_risks.length > 0" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <span class="tip" data-tip="Risks present in all compared landscapes, with risk level per landscape.">Shared Risks</span>
+        <span class="tip-icon tip" data-tip="Each row shows a risk shared across all landscapes with its assessed risk level in each.">i</span>
+        <span class="ml-2 text-xs font-normal text-gray-400" x-text="`${data.shared_risks.length} risks`"></span>
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-gray-400 uppercase border-b border-gray-200">
+              <th class="tip pb-2 pr-3" data-tip="Name of the shared risk.">Risk Name</th>
+              <th class="tip pb-2 pr-3" data-tip="Source risk framework.">Framework</th>
+              <template x-for="name in names" :key="name">
+                <th class="tip pb-2 pr-3 text-center" :data-tip="`Risk level in ${name}`" x-text="name"></th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="risk in sortedSharedRisks" :key="risk.risk_id">
+              <tr class="border-b border-gray-100">
+                <td class="py-2 pr-3 font-medium text-gray-900" x-text="risk.risk_name"></td>
+                <td class="py-2 pr-3">
+                  <span class="px-2 py-0.5 rounded text-xs"
+                        :class="frameworkColor(risk.risk_framework)"
+                        x-text="risk.risk_framework || '?'"></span>
+                </td>
+                <template x-for="name in names" :key="name">
+                  <td class="py-2 pr-3 text-center">
+                    <span class="px-2 py-0.5 rounded text-xs font-medium"
+                          :class="levelColor(risk.per_landscape[name])"
+                          x-text="(risk.per_landscape[name] || 'n/a').replace(/_/g, ' ')"></span>
+                  </td>
+                </template>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Unique Risks per Landscape -->
+    <section x-show="Object.keys(data.unique_risks).length > 0" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <span class="tip" data-tip="Risks that appear in only one landscape. Expand each section to see details.">Unique Risks</span>
+        <span class="tip-icon tip" data-tip="Collapsible sections showing risks unique to each landscape.">i</span>
+      </h2>
+      <div class="space-y-3">
+        <template x-for="name in names" :key="name">
+          <div class="border border-gray-200 rounded-lg" x-data="{ expanded: false }">
+            <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-gray-50"
+                 @click="expanded = !expanded">
+              <div class="flex items-center gap-3">
+                <span class="font-semibold text-gray-900" x-text="name"></span>
+                <span class="px-2 py-0.5 rounded text-xs bg-orange-100 text-orange-800"
+                      x-text="`${(data.unique_risks[name] || []).length} unique risks`"></span>
+              </div>
+              <svg class="w-5 h-5 text-gray-400 transition-transform"
+                   :class="expanded ? 'rotate-180' : ''"
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </div>
+            <div x-show="expanded" class="px-3 pb-3 pt-0 border-t border-gray-100">
+              <template x-if="(data.unique_risks[name] || []).length === 0">
+                <p class="text-sm text-gray-400 italic py-2">No unique risks</p>
+              </template>
+              <div class="overflow-x-auto">
+                <table x-show="(data.unique_risks[name] || []).length > 0" class="w-full text-sm mt-2">
+                  <thead>
+                    <tr class="text-left text-xs text-gray-400 uppercase border-b border-gray-200">
+                      <th class="pb-2 pr-3">Risk Name</th>
+                      <th class="pb-2 pr-3">Framework</th>
+                      <th class="pb-2 pr-3 text-center">Risk Level</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template x-for="risk in data.unique_risks[name] || []" :key="risk.risk_id">
+                      <tr class="border-b border-gray-100">
+                        <td class="py-2 pr-3 font-medium text-gray-900" x-text="risk.risk_name"></td>
+                        <td class="py-2 pr-3">
+                          <span class="px-2 py-0.5 rounded text-xs"
+                                :class="frameworkColor(risk.risk_framework)"
+                                x-text="risk.risk_framework || '?'"></span>
+                        </td>
+                        <td class="py-2 pr-3 text-center">
+                          <span class="px-2 py-0.5 rounded text-xs font-medium"
+                                :class="levelColor(risk.risk_level)"
+                                x-text="(risk.risk_level || 'unassessed').replace(/_/g, ' ')"></span>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </section>
+
+    <!-- Framework Coverage -->
+    <section x-show="allFrameworks.length > 0" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <span class="tip" data-tip="Number of risks from each framework across all landscapes. Compare coverage breadth.">Framework Coverage</span>
+        <span class="tip-icon tip" data-tip="Rows are frameworks, columns are landscapes. Shows risk count per framework per landscape.">i</span>
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-gray-400 uppercase border-b border-gray-200">
+              <th class="tip pb-2 pr-3" data-tip="Risk framework name.">Framework</th>
+              <template x-for="name in names" :key="name">
+                <th class="pb-2 pr-3 text-center" x-text="name"></th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="fw in allFrameworks" :key="fw">
+              <tr class="border-b border-gray-100">
+                <td class="py-2 pr-3">
+                  <span class="px-2 py-0.5 rounded text-xs"
+                        :class="frameworkColor(fw)"
+                        x-text="fw"></span>
+                </td>
+                <template x-for="name in names" :key="name">
+                  <td class="py-2 pr-3 text-center font-mono"
+                      :class="(data.framework_coverage[name] || {})[fw] ? 'font-bold text-gray-900' : 'text-gray-300'"
+                      x-text="(data.framework_coverage[name] || {})[fw] || 0"></td>
+                </template>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Risk Level Distribution -->
+    <section x-show="allLevels.length > 0" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <span class="tip" data-tip="Distribution of assessed risk levels across landscapes. Shows how many risks are at each severity.">Risk Level Distribution</span>
+        <span class="tip-icon tip" data-tip="Rows are risk levels, columns are landscapes. Count of risks at each level.">i</span>
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-gray-400 uppercase border-b border-gray-200">
+              <th class="tip pb-2 pr-3" data-tip="Risk severity level.">Level</th>
+              <template x-for="name in names" :key="name">
+                <th class="pb-2 pr-3 text-center" x-text="name"></th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="level in allLevels" :key="level">
+              <tr class="border-b border-gray-100">
+                <td class="py-2 pr-3">
+                  <span class="px-2 py-0.5 rounded text-xs font-medium"
+                        :class="levelColor(level)"
+                        x-text="level.replace(/_/g, ' ')"></span>
+                </td>
+                <template x-for="name in names" :key="name">
+                  <td class="py-2 pr-3 text-center font-mono"
+                      :class="(data.risk_level_distribution[name] || {})[level] ? 'font-bold text-gray-900' : 'text-gray-300'"
+                      x-text="(data.risk_level_distribution[name] || {})[level] || 0"></td>
+                </template>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Causal Chain Depth -->
+    <section x-show="Object.keys(data.causal_chain_stats || {}).length > 0" class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+      <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <span class="tip" data-tip="Causal chain element counts per landscape. More elements indicate richer risk documentation.">Causal Chain Depth</span>
+        <span class="tip-icon tip" data-tip="Total sources, consequences, impacts, and controls across all risks in each landscape.">i</span>
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-xs text-gray-400 uppercase border-b border-gray-200">
+              <th class="tip pb-2 pr-3" data-tip="Causal chain element type.">Element</th>
+              <template x-for="name in names" :key="name">
+                <th class="pb-2 pr-3 text-center" x-text="name"></th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 pr-3 text-gray-700">
+                <span class="tip" data-tip="Risk sources identify what causes or contributes to a risk (data, model, attack, organisational, performance, system).">Sources</span>
+              </td>
+              <template x-for="name in names" :key="name">
+                <td class="py-2 pr-3 text-center font-mono font-medium text-cyan-700"
+                    x-text="(data.causal_chain_stats[name] || {}).sources || 0"></td>
+              </template>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 pr-3 text-gray-700">
+                <span class="tip" data-tip="Consequences are what happens when a risk materialises.">Consequences</span>
+              </td>
+              <template x-for="name in names" :key="name">
+                <td class="py-2 pr-3 text-center font-mono font-medium text-orange-700"
+                    x-text="(data.causal_chain_stats[name] || {}).consequences || 0"></td>
+              </template>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 pr-3 text-gray-700">
+                <span class="tip" data-tip="Impacts are harms to individuals, groups, or society.">Impacts</span>
+              </td>
+              <template x-for="name in names" :key="name">
+                <td class="py-2 pr-3 text-center font-mono font-medium text-red-700"
+                    x-text="(data.causal_chain_stats[name] || {}).impacts || 0"></td>
+              </template>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 pr-3 text-gray-700">
+                <span class="tip" data-tip="Controls are actions that detect, evaluate, mitigate, or eliminate risks.">Controls</span>
+              </td>
+              <template x-for="name in names" :key="name">
+                <td class="py-2 pr-3 text-center font-mono font-medium text-blue-700"
+                    x-text="(data.causal_chain_stats[name] || {}).controls || 0"></td>
+              </template>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Coverage Gaps -->
+    <section x-show="hasAnyCoverageGaps" class="bg-purple-50 rounded-xl shadow-sm border border-purple-200 p-5">
+      <h2 class="text-sm font-semibold text-purple-900 uppercase tracking-wide mb-3">
+        <span class="tip" data-tip="Policy concerns that could not be well-matched to any existing risk in the knowledge graph. Gap types: domain_specialization (existing risk needs narrowing), compositional (combination of existing risks), novel (fundamentally new failure mode).">Coverage Gaps</span>
+        <span class="tip-icon tip" data-tip="Policy concerns with no good risk match per landscape.">i</span>
+      </h2>
+      <div class="space-y-3">
+        <template x-for="name in names" :key="name">
+          <template x-if="(data.coverage_gaps[name] || []).length > 0">
+            <div class="border border-purple-200 rounded-lg bg-white" x-data="{ expanded: false }">
+              <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-purple-50/50"
+                   @click="expanded = !expanded">
+                <div class="flex items-center gap-3">
+                  <span class="font-semibold text-gray-900" x-text="name"></span>
+                  <span class="px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-800"
+                        x-text="`${(data.coverage_gaps[name] || []).length} gaps`"></span>
+                </div>
+                <svg class="w-5 h-5 text-gray-400 transition-transform"
+                     :class="expanded ? 'rotate-180' : ''"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </div>
+              <div x-show="expanded" class="px-3 pb-3 pt-0 border-t border-purple-100 space-y-2">
+                <template x-for="gap in data.coverage_gaps[name] || []" :key="gap.policy_concept">
+                  <div class="border border-gray-100 rounded p-3">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                      <span class="font-medium text-gray-900 text-sm" x-text="gap.policy_concept"></span>
+                      <span class="px-2 py-0.5 rounded text-xs font-medium"
+                            :class="{
+                              'bg-blue-100 text-blue-800': gap.gap_type === 'domain_specialization',
+                              'bg-gray-200 text-gray-600': gap.gap_type === 'compositional',
+                              'bg-red-100 text-red-800': gap.gap_type === 'novel'
+                            }"
+                            x-text="gap.gap_type.replace(/_/g, ' ')"></span>
+                    </div>
+                    <p class="text-sm text-gray-600" x-text="gap.reasoning"></p>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
+        </template>
+      </div>
+    </section>
+
+  </div>
+
+<script>
+const DATA = __REPORT_DATA__;
+
+function reportApp() {
+  const names = (DATA.landscapes || []).map(l => l.name);
+
+  // Union of all framework names, sorted
+  const fwSet = new Set();
+  for (const name of names) {
+    for (const fw of Object.keys(DATA.framework_coverage[name] || {})) {
+      fwSet.add(fw);
+    }
+  }
+  const allFrameworks = [...fwSet].sort();
+
+  // Union of all risk level keys, in severity order
+  const levelOrder = ['very_high', 'high', 'medium', 'low', 'very_low', 'unassessed'];
+  const lvlSet = new Set();
+  for (const name of names) {
+    for (const lv of Object.keys(DATA.risk_level_distribution[name] || {})) {
+      lvlSet.add(lv);
+    }
+  }
+  const allLevels = levelOrder.filter(l => lvlSet.has(l));
+  // Append any levels not in the predefined order
+  for (const lv of lvlSet) {
+    if (!allLevels.includes(lv)) allLevels.push(lv);
+  }
+
+  // Shared risks sorted by name
+  const sortedSharedRisks = [...(DATA.shared_risks || [])].sort((a, b) =>
+    (a.risk_name || '').localeCompare(b.risk_name || '')
+  );
+
+  // Check if any landscape has coverage gaps
+  const hasAnyCoverageGaps = names.some(n => (DATA.coverage_gaps[n] || []).length > 0);
+
+  return {
+    data: DATA,
+    names,
+    allFrameworks,
+    allLevels,
+    sortedSharedRisks,
+    hasAnyCoverageGaps,
+
+    levelColor(level) {
+      const colors = {
+        'very_high': 'bg-red-100 text-red-800',
+        'high': 'bg-orange-100 text-orange-800',
+        'medium': 'bg-yellow-100 text-yellow-800',
+        'low': 'bg-green-100 text-green-800',
+        'very_low': 'bg-emerald-100 text-emerald-800',
+      };
+      return colors[level] || 'bg-gray-100 text-gray-500';
+    },
+
+    frameworkColor(framework) {
+      const colors = {
+        'IBM Risk Atlas': 'bg-blue-100 text-blue-800',
+        'NIST AI RMF': 'bg-green-100 text-green-800',
+        'OWASP LLM Top 10': 'bg-red-100 text-red-800',
+        'AIR 2024': 'bg-purple-100 text-purple-800',
+        'MIT AI Risk Repository': 'bg-yellow-100 text-yellow-800',
+      };
+      return colors[framework] || 'bg-gray-100 text-gray-800';
+    },
+  };
+}
+</script>
 </body>
 </html>
