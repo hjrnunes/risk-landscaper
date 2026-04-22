@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Comparison logic** — `compare.py` module with `build_comparison()` function. Takes a list of named `(name, RiskLandscape, PolicyProfile)` tuples and produces a `Comparison`: shared/unique risk identification, per-landscape risk level distribution, framework coverage, coverage gaps, and causal chain statistics. Pure set operations, no LLM calls. 10 new tests.
 - **Comparison data models** — `LandscapeSummary`, `SharedRisk`, `RiskRef`, `CausalChainStats`, and `Comparison` Pydantic models for comparing multiple risk landscapes. 6 new tests.
 
 - **Trustworthy characteristics inference** — `RiskCard.trustworthy_characteristics` now populated during `build_landscape` from VAIR type matches and keyword heuristics. 11 ISO/IEC 24028 + EU AI Act characteristics: accuracy, robustness, cybersecurity, transparency, fairness, privacy, safety, accountability, controllability, reliability, resilience. Free-layer enrichment, no LLM calls. 19 new tests.
