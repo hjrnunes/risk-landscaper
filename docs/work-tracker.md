@@ -73,7 +73,7 @@ Status of the AIRO Risk Card alignment implementation.
 - [x] Auto-detection by file extension in `_load_input()`
 - [x] Graceful error when markitdown not installed
 
-### Tests (291 total)
+### Tests (294 total)
 
 - [x] 19 model tests
 - [x] 32 build_landscape tests (risk_type, controls, provenance, incidents, VAIR, source/control inference)
@@ -85,7 +85,7 @@ Status of the AIRO Risk Card alignment implementation.
 - [x] 20 VAIR vocabulary matching tests
 - [x] 76 policy battery tests across 11 example files
 - [x] 30 assessment tests (risk matrix, max level, AIMS coverage, per-card tagging, report events)
-- [x] 17 serialize tests (JSON-LD structure, VAIR resolution, causal chain, controls, incidents, evaluations, envelope, provenance, turtle)
+- [x] 20 serialize tests (JSON-LD structure, VAIR resolution, causal chain, controls, incidents, evaluations, envelope, provenance, turtle, @reverse context, coverage gaps)
 - [x] 15 CLI tests (schema export, document conversion, input validation, export subcommand, --format flag)
 
 ### Serialization / Interoperability
