@@ -17,6 +17,7 @@ The causal chain follows an established standards hierarchy:
    - Controls via `modifiesRiskConcept` with sub-properties: detects, eliminates, mitigates
 3. **DPV risk extension** (W3C DPVCG) — base vocabulary AIRO imports; adds RiskSource, Threat, Vulnerability, Incident, risk matrices
 4. **VAIR** (Vocabulary of AI Risks) — AI-specific subtypes for chain nodes (data/model/attack source types, bias/discrimination consequences, wellbeing/rights impacts)
+5. **PROV-O** (W3C Provenance Ontology) — `prov:Entity`, `prov:Activity`, `prov:Agent` with `wasAttributedTo`, `wasGeneratedBy`, `wasAssociatedWith` relationships. Used in JSON-LD serialization to track which subsystem (Nexus, VAIR, heuristics, LLM) produced each causal chain element.
 
 ## Output Architecture
 
@@ -212,6 +213,35 @@ The RiskLandscape is the governance artifact, not a governance system. It must b
 | `direct` | Adversarial prompts testing boundaries | Rule definition | Pre-deployment risk gate |
 | `evaluate` | lm-eval tasks with pass/fail criteria | Threshold config | Assessment questionnaire |
 | `monitor` | Drift detection probes | Alert trigger | Post-deployment monitoring |
+
+## PROV-O Provenance
+
+The JSON-LD serialization uses W3C PROV-O to make data lineage explicit. Every causal chain element that carries an internal `provenance` tag gets two triples:
+
+- `prov:wasAttributedTo` — which agent produced the data
+- `prov:wasGeneratedBy` — which pipeline activity produced the data
+
+### Agents
+
+| Internal tag | PROV-O Agent IRI | Description |
+|---|---|---|
+| `nexus` | `rl:NexusKnowledgeGraph` | AI Atlas Nexus knowledge graph |
+| `vair` | `rl:VAIRMatcher` | VAIR v1.0 vocabulary keyword matcher |
+| `heuristic` | `rl:HeuristicEngine` | Rule-based inference (source type, control type) |
+| `llm` | `rl:LLMAgent` | LLM-assisted synthesis |
+
+### Activities
+
+| Activity IRI | Pipeline stage | Produces |
+|---|---|---|
+| `rl:BuildLandscape` | `build_landscape` | Nexus, VAIR, and heuristic elements |
+| `rl:EnrichChains` | `enrich_chains` | LLM-synthesized causal chains |
+
+### Landscape-level provenance
+
+The `RiskLandscape` is typed as `prov:Entity`. When `GovernanceProvenance` is present, it serializes as a `prov:Activity` node under `prov:wasGeneratedBy`, with `prov:wasAssociatedWith` pointing to the producing tool and `prov:endedAtTime` carrying the run timestamp.
+
+The internal Pydantic models are unchanged — the PROV-O mapping lives entirely in `serialize.py`.
 
 ## Interoperability
 

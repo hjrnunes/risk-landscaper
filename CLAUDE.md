@@ -29,7 +29,7 @@ src/risk_landscaper/
     prompts/             # Jinja2 templates (system + user per stage)
     ingest_cot.json      # Chain-of-thought examples for ingest
     *_template.html      # HTML report templates (Tailwind + Alpine.js)
-tests/                   # pytest suite (333 tests)
+tests/                   # pytest suite
 policy_examples/         # 11 standard + 12 frontier safety policies (subdirs = multi-doc groups)
 batteries/               # YAML battery configs for run_all_policies.py
 docs/
