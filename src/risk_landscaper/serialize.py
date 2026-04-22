@@ -21,6 +21,13 @@ SOURCE_TYPE_TO_VAIR = {
     "system": "vair:SystemRiskSource",
 }
 
+CONTROL_TYPE_TO_IRI = {
+    "detect": "airo:detectsRiskConcept",
+    "evaluate": "rl:evaluatesRiskConcept",
+    "mitigate": "airo:mitigatesRiskConcept",
+    "eliminate": "airo:eliminatesRiskConcept",
+}
+
 _VAIR_IDS = {t.id for t in RISK_SOURCES + CONSEQUENCES + IMPACTS + IMPACTED_AREAS}
 _IMPACTED_AREA_IDS = {t.id for t in IMPACTED_AREAS}
 
@@ -71,6 +78,43 @@ def _serialize_impact(imp) -> dict:
     return node
 
 
+def _serialize_control(ctrl) -> dict:
+    node: dict = {"@type": "airo:RiskControl", "rdfs:comment": ctrl.description}
+    if ctrl.control_type:
+        iri = CONTROL_TYPE_TO_IRI.get(ctrl.control_type)
+        if iri:
+            node["rl:controlFunction"] = iri
+    if ctrl.targets:
+        node["rl:controlTargets"] = ctrl.targets
+    return node
+
+
+def _serialize_incident(inc) -> dict:
+    node: dict = {"@type": "dpv:Incident", "rdfs:label": inc.name}
+    if inc.description:
+        node["rdfs:comment"] = inc.description
+    if inc.source_uri:
+        node["rdfs:seeAlso"] = inc.source_uri
+    if inc.status:
+        node["rl:incidentStatus"] = inc.status
+    return node
+
+
+def _serialize_evaluation(ev) -> dict:
+    node: dict = {"@type": "rl:Evaluation", "@id": ev.eval_id}
+    if ev.eval_type:
+        node["rl:evalType"] = ev.eval_type
+    if ev.summary:
+        node["rdfs:comment"] = ev.summary
+    if ev.metrics:
+        node["rl:metrics"] = ev.metrics
+    if ev.source_uri:
+        node["rdfs:seeAlso"] = ev.source_uri
+    if ev.timestamp:
+        node["rl:timestamp"] = ev.timestamp
+    return node
+
+
 def _serialize_risk_card(card) -> dict:
     node: dict = {
         "@id": f"nexus:{card.risk_id}",
@@ -105,6 +149,12 @@ def _serialize_risk_card(card) -> dict:
         node["airo:hasConsequence"] = [_serialize_consequence(c) for c in card.consequences]
     if card.impacts:
         node["airo:hasImpact"] = [_serialize_impact(i) for i in card.impacts]
+    if card.controls:
+        node["airo:modifiesRiskConcept"] = [_serialize_control(c) for c in card.controls]
+    if card.incidents:
+        node["dpv:Incident"] = [_serialize_incident(i) for i in card.incidents]
+    if card.evaluations:
+        node["rl:evaluation"] = [_serialize_evaluation(e) for e in card.evaluations]
     return node
 
 

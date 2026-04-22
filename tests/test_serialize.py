@@ -1,5 +1,5 @@
 # tests/test_serialize.py
-from risk_landscaper.models import RiskLandscape, RiskCard, RiskSource, RiskConsequence, RiskImpact
+from risk_landscaper.models import RiskLandscape, RiskCard, RiskSource, RiskConsequence, RiskImpact, RiskControl, RiskIncidentRef, EvaluationRef
 from risk_landscaper.serialize import landscape_to_jsonld
 
 
@@ -121,3 +121,89 @@ def test_impacts_serialize():
     assert imp["airo:hasSeverity"] == "high"
     assert imp["airo:hasImpactOnArea"] == "vair:Right"
     assert imp["airo:hasImpactOnStakeholder"] == ["end users", "applicants"]
+
+
+def test_control_type_mapping():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                controls=[
+                    RiskControl(description="Monitor for bias", control_type="detect"),
+                    RiskControl(description="Run benchmarks", control_type="evaluate"),
+                    RiskControl(description="Apply guardrails", control_type="mitigate"),
+                    RiskControl(description="Remove feature", control_type="eliminate"),
+                ],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    card = result["rl:hasRiskCard"][0]
+    controls = card["airo:modifiesRiskConcept"]
+    assert len(controls) == 4
+    assert controls[0]["rl:controlFunction"] == "airo:detectsRiskConcept"
+    assert controls[1]["rl:controlFunction"] == "rl:evaluatesRiskConcept"
+    assert controls[2]["rl:controlFunction"] == "airo:mitigatesRiskConcept"
+    assert controls[3]["rl:controlFunction"] == "airo:eliminatesRiskConcept"
+    assert all(c["@type"] == "airo:RiskControl" for c in controls)
+
+
+def test_incidents_serialize():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                incidents=[
+                    RiskIncidentRef(
+                        name="COMPAS Recidivism",
+                        description="Racial bias in sentencing",
+                        source_uri="https://example.com/compas",
+                        status="concluded",
+                    ),
+                ],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    card = result["rl:hasRiskCard"][0]
+    incidents = card["dpv:Incident"]
+    assert len(incidents) == 1
+    inc = incidents[0]
+    assert inc["@type"] == "dpv:Incident"
+    assert inc["rdfs:label"] == "COMPAS Recidivism"
+    assert inc["rdfs:comment"] == "Racial bias in sentencing"
+    assert inc["rdfs:seeAlso"] == "https://example.com/compas"
+    assert inc["rl:incidentStatus"] == "concluded"
+
+
+def test_evaluations_serialize():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                evaluations=[
+                    EvaluationRef(
+                        eval_id="eval-001",
+                        eval_type="lm-eval",
+                        summary="TruthfulQA pass rate",
+                        metrics={"pass_rate": 0.95},
+                        source_uri="https://example.com/eval",
+                    ),
+                ],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    card = result["rl:hasRiskCard"][0]
+    evals = card["rl:evaluation"]
+    assert len(evals) == 1
+    ev = evals[0]
+    assert ev["@type"] == "rl:Evaluation"
+    assert ev["@id"] == "eval-001"
+    assert ev["rl:evalType"] == "lm-eval"
+    assert ev["rdfs:comment"] == "TruthfulQA pass rate"
+    assert ev["rl:metrics"] == {"pass_rate": 0.95}
+    assert ev["rdfs:seeAlso"] == "https://example.com/eval"
