@@ -236,6 +236,36 @@ class RiskCard(BaseModel):
 RiskDetail = RiskCard
 
 
+class LandscapeSummary(BaseModel):
+    name: str
+    organization: str | None = None
+    domain: list[str] = []
+    risk_count: int = 0
+    policy_count: int = 0
+    timestamp: str = ""
+
+
+class SharedRisk(BaseModel):
+    risk_id: str
+    risk_name: str
+    risk_framework: str | None = None
+    per_landscape: dict[str, str | None] = {}
+
+
+class RiskRef(BaseModel):
+    risk_id: str
+    risk_name: str
+    risk_framework: str | None = None
+    risk_level: str | None = None
+
+
+class CausalChainStats(BaseModel):
+    sources: int = 0
+    consequences: int = 0
+    impacts: int = 0
+    controls: int = 0
+
+
 class WeakMatch(BaseModel):
     risk_id: str
     policy_concept: str
@@ -266,6 +296,18 @@ class RiskLandscape(BaseModel):
     weak_matches: list[WeakMatch] = []
     coverage_gaps: list[CoverageGap] = []
     provenance: GovernanceProvenance | None = None
+
+
+class Comparison(BaseModel):
+    version: str = "0.1"
+    timestamp: str = ""
+    landscapes: list[LandscapeSummary] = []
+    shared_risks: list[SharedRisk] = []
+    unique_risks: dict[str, list[RiskRef]] = {}
+    framework_coverage: dict[str, dict[str, int]] = {}
+    risk_level_distribution: dict[str, dict[str, int]] = {}
+    coverage_gaps: dict[str, list[CoverageGap]] = {}
+    causal_chain_stats: dict[str, CausalChainStats] = {}
 
 
 @dataclass

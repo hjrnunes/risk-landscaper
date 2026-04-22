@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Comparison data models** — `LandscapeSummary`, `SharedRisk`, `RiskRef`, `CausalChainStats`, and `Comparison` Pydantic models for comparing multiple risk landscapes. 6 new tests.
+
 - **Trustworthy characteristics inference** — `RiskCard.trustworthy_characteristics` now populated during `build_landscape` from VAIR type matches and keyword heuristics. 11 ISO/IEC 24028 + EU AI Act characteristics: accuracy, robustness, cybersecurity, transparency, fairness, privacy, safety, accountability, controllability, reliability, resilience. Free-layer enrichment, no LLM calls. 19 new tests.
 
 - **PROV-O provenance in JSON-LD** — element-level `prov:wasAttributedTo` and `prov:wasGeneratedBy` triples on all causal chain elements (risk sources, consequences, impacts, controls, incidents) that carry a provenance tag. Four agents mapped: `rl:NexusKnowledgeGraph`, `rl:VAIRMatcher`, `rl:HeuristicEngine`, `rl:LLMAgent`. Two activities: `rl:BuildLandscape`, `rl:EnrichChains`. Landscape typed as `prov:Entity`, governance provenance serialized as `prov:Activity` with `prov:wasAssociatedWith` and `prov:endedAtTime`. 9 new tests.

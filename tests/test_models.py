@@ -4,6 +4,7 @@ from risk_landscaper.models import (
     RiskCard, RiskDetail, RiskLandscape, CoverageGap, RunReport,
     RiskSource, RiskConsequence, RiskImpact, RiskControl,
     RiskIncidentRef, EvaluationRef, GovernanceProvenance,
+    LandscapeSummary, SharedRisk, RiskRef, CausalChainStats, Comparison,
 )
 
 
@@ -261,3 +262,64 @@ def test_run_report_to_dict():
     report.stages_completed.append("ingest")
     d = report.to_dict()
     assert d["stages_completed"] == ["ingest"]
+
+
+def test_landscape_summary_defaults():
+    s = LandscapeSummary(name="test-run")
+    assert s.organization is None
+    assert s.domain == []
+    assert s.risk_count == 0
+    assert s.policy_count == 0
+    assert s.timestamp == ""
+
+
+def test_shared_risk_per_landscape():
+    sr = SharedRisk(
+        risk_id="r1",
+        risk_name="Test Risk",
+        risk_framework="NIST",
+        per_landscape={"org-a": "high", "org-b": None},
+    )
+    assert sr.per_landscape["org-a"] == "high"
+    assert sr.per_landscape["org-b"] is None
+
+
+def test_risk_ref_minimal():
+    r = RiskRef(risk_id="r1", risk_name="Test Risk")
+    assert r.risk_framework is None
+    assert r.risk_level is None
+
+
+def test_causal_chain_stats_defaults():
+    s = CausalChainStats()
+    assert s.sources == 0
+    assert s.consequences == 0
+    assert s.impacts == 0
+    assert s.controls == 0
+
+
+def test_comparison_defaults():
+    c = Comparison()
+    assert c.version == "0.1"
+    assert c.landscapes == []
+    assert c.shared_risks == []
+    assert c.unique_risks == {}
+    assert c.framework_coverage == {}
+    assert c.risk_level_distribution == {}
+    assert c.coverage_gaps == {}
+    assert c.causal_chain_stats == {}
+
+
+def test_comparison_roundtrip():
+    c = Comparison(
+        landscapes=[LandscapeSummary(name="a", risk_count=3)],
+        shared_risks=[SharedRisk(risk_id="r1", risk_name="R", per_landscape={"a": "high"})],
+        unique_risks={"a": [RiskRef(risk_id="r2", risk_name="R2")]},
+        causal_chain_stats={"a": CausalChainStats(sources=5, controls=2)},
+    )
+    d = c.model_dump()
+    c2 = Comparison(**d)
+    assert c2.landscapes[0].risk_count == 3
+    assert c2.shared_risks[0].per_landscape == {"a": "high"}
+    assert len(c2.unique_risks["a"]) == 1
+    assert c2.causal_chain_stats["a"].sources == 5
