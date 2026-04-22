@@ -508,12 +508,17 @@
       <!-- 6. Trustworthy Characteristics -->
       <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
         <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-          <span class="tip" data-tip="ISO/IEC 24028 trustworthy characteristics addressed by the matched risks (e.g. safety, security, privacy, fairness).">6. Trustworthy Characteristics</span>
-          <span class="tip-icon tip" data-tip="Aggregated across all risk cards in this landscape.">i</span>
+          <span class="tip" data-tip="ISO/IEC 24028 trustworthy characteristics threatened by matched risks. Stakeholder names show who has declared interest in each characteristic.">6. Trustworthy Characteristics</span>
+          <span class="tip-icon tip" data-tip="Aggregated across all risk cards. Stakeholder interests from entity enrichment.">i</span>
         </h2>
-        <div x-show="trustworthyChars.length" class="flex flex-wrap gap-2">
+        <div x-show="trustworthyChars.length" class="flex flex-wrap gap-3">
           <template x-for="c in trustworthyChars" :key="c">
-            <span class="px-3 py-1 rounded-lg text-sm bg-indigo-50 text-indigo-800 font-medium capitalize" x-text="c.replace(/_/g, ' ')"></span>
+            <div class="flex flex-col items-start">
+              <span class="px-3 py-1 rounded-lg text-sm bg-indigo-50 text-indigo-800 font-medium capitalize" x-text="c.replace(/_/g, ' ')"></span>
+              <template x-if="charStakeholderMap[c]?.length">
+                <span class="text-xs text-gray-400 mt-0.5 ml-1" x-text="charStakeholderMap[c].join(', ')"></span>
+              </template>
+            </div>
           </template>
         </div>
         <p x-show="!trustworthyChars.length" class="text-sm text-gray-400 italic">Not specified</p>
@@ -662,6 +667,13 @@ function cardApp() {
     }
   }
 
+  const charStakeholderMap = {};
+  for (const c of trustworthySet) {
+    charStakeholderMap[c] = stakeholders
+      .filter(s => (s.trustworthy_interests || []).includes(c))
+      .map(s => s.name);
+  }
+
   const areaMap = {};
   for (const risk of l.risks || []) {
     for (const impact of risk.impacts || []) {
@@ -692,6 +704,7 @@ function cardApp() {
     aiSubjects,
     involvementRows,
     trustworthyChars: [...trustworthySet].sort(),
+    charStakeholderMap,
     impactAreas,
 
     riskLevelClass(level) {
