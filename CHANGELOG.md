@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - **Turtle serialization** — `landscape_to_turtle()` converts RiskLandscape to RDF Turtle format via optional `rdflib` dependency. Optional `[rdf]` extra (`pip install 'risk-landscaper[rdf]'`). Raises helpful ImportError when rdflib not installed.
 - **Export subcommand** — `risk-landscaper export` CLI command converts existing risk landscape YAML files to JSON-LD or Turtle format. `--format` flag defaults to `jsonld`, also supports `turtle`. Outputs to `risk-landscape.jsonld` or `risk-landscape.ttl` in the specified directory.
 - **`--format` flag on `run`** — `risk-landscaper run --format jsonld` or `--format turtle` writes additional serialization alongside YAML output.
+- **Merge primitives** — `merge.py` module with generic helpers (`_union_lists`, `_merge_by_key`) and per-type merge functions (`_merge_organizations`, `_merge_stakeholders`, `_merge_ai_systems`, `_merge_regulations`) for multi-document profile merging. 14 tests.
 
 ## [0.2.0] - 2026-04-21
 
