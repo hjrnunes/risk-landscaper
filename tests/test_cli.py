@@ -202,3 +202,102 @@ def test_run_format_jsonld_flag(tmp_path):
     # Will fail because policy file doesn't exist, but --format should be accepted
     assert "no such option" not in result.output.lower()
     assert "does not exist" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Compare subcommand
+# ---------------------------------------------------------------------------
+
+import yaml
+from risk_landscaper.models import RiskLandscape, RiskCard, PolicyProfile, Organization, Policy
+
+
+def _write_run_dir(tmp_path, name, landscape, profile):
+    """Create a run output directory with landscape YAML and profile JSON."""
+    run_dir = tmp_path / name
+    run_dir.mkdir()
+    (run_dir / "risk-landscape.yaml").write_text(
+        yaml.dump(landscape.model_dump(), default_flow_style=False, sort_keys=False)
+    )
+    (run_dir / "policy-profile.json").write_text(
+        json.dumps(profile.model_dump(), indent=2)
+    )
+    return run_dir
+
+
+def test_compare_two_runs(tmp_path):
+    la = RiskLandscape(
+        run_slug="a", timestamp="2026-01-01",
+        risks=[RiskCard(risk_id="r1", risk_name="R1", risk_level="high")],
+        framework_coverage={"NIST": 1},
+    )
+    pa = PolicyProfile(
+        organization=Organization(name="Alpha"),
+        policies=[Policy(policy_concept="P1", concept_definition="D1")],
+    )
+    lb = RiskLandscape(
+        run_slug="b", timestamp="2026-01-02",
+        risks=[
+            RiskCard(risk_id="r1", risk_name="R1", risk_level="low"),
+            RiskCard(risk_id="r2", risk_name="R2"),
+        ],
+        framework_coverage={"NIST": 1, "IBM": 1},
+    )
+    pb = PolicyProfile(
+        organization=Organization(name="Beta"),
+        policies=[
+            Policy(policy_concept="P1", concept_definition="D1"),
+            Policy(policy_concept="P2", concept_definition="D2"),
+        ],
+    )
+
+    dir_a = _write_run_dir(tmp_path, "run-a", la, pa)
+    dir_b = _write_run_dir(tmp_path, "run-b", lb, pb)
+    out_dir = tmp_path / "out"
+
+    result = runner.invoke(app, ["compare", str(dir_a), str(dir_b), "-o", str(out_dir)])
+    assert result.exit_code == 0, result.output
+
+    assert (out_dir / "comparison.yaml").exists()
+    assert (out_dir / "comparison-report.html").exists()
+
+    data = yaml.safe_load((out_dir / "comparison.yaml").read_text())
+    assert len(data["landscapes"]) == 2
+    assert len(data["shared_risks"]) == 1
+    assert data["shared_risks"][0]["risk_id"] == "r1"
+
+
+def test_compare_missing_directory(tmp_path):
+    la = RiskLandscape(run_slug="a", risks=[])
+    pa = PolicyProfile(policies=[])
+    dir_a = _write_run_dir(tmp_path, "run-a", la, pa)
+
+    result = runner.invoke(app, ["compare", str(dir_a), "/nonexistent/dir", "-o", "/tmp/out"])
+    assert result.exit_code != 0
+    assert "does not exist" in result.output
+
+
+def test_compare_single_directory_rejected(tmp_path):
+    la = RiskLandscape(run_slug="a", risks=[])
+    pa = PolicyProfile(policies=[])
+    dir_a = _write_run_dir(tmp_path, "run-a", la, pa)
+    out_dir = tmp_path / "out"
+
+    result = runner.invoke(app, ["compare", str(dir_a), "-o", str(out_dir)])
+    assert result.exit_code != 0
+    assert "at least 2" in result.output.lower() or "two" in result.output.lower()
+
+
+def test_compare_missing_landscape_yaml(tmp_path):
+    run_dir = tmp_path / "bad-run"
+    run_dir.mkdir()
+    (run_dir / "policy-profile.json").write_text("{}")
+
+    la = RiskLandscape(run_slug="d", risks=[])
+    pa = PolicyProfile(policies=[])
+    _write_run_dir(tmp_path, "good-run", la, pa)
+
+    out_dir = tmp_path / "out"
+    result = runner.invoke(app, ["compare", str(run_dir), str(tmp_path / "good-run"), "-o", str(out_dir)])
+    assert result.exit_code != 0
+    assert "risk-landscape.yaml" in result.output

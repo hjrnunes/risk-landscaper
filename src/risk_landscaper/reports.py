@@ -150,6 +150,10 @@ def build_ingest_report_data(
     }
 
 
+def build_comparison_report(data: dict, output_path: Path) -> Path:
+    return _render("comparison_report_template.html", data, output_path)
+
+
 def build_ingest_report(
     doc: PolicyProfile,
     report: RunReport,

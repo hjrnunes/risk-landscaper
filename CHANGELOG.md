@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Compare CLI command** — `risk-landscaper compare` CLI command takes 2+ run output directories (each containing `risk-landscape.yaml` and `policy-profile.json`) and produces `comparison.yaml` + `comparison-report.html`. Error handling for missing directories, missing files, and insufficient inputs. 4 new tests.
 - **Comparison logic** — `compare.py` module with `build_comparison()` function. Takes a list of named `(name, RiskLandscape, PolicyProfile)` tuples and produces a `Comparison`: shared/unique risk identification, per-landscape risk level distribution, framework coverage, coverage gaps, and causal chain statistics. Pure set operations, no LLM calls. 10 new tests.
 - **Comparison data models** — `LandscapeSummary`, `SharedRisk`, `RiskRef`, `CausalChainStats`, and `Comparison` Pydantic models for comparing multiple risk landscapes. 6 new tests.
 

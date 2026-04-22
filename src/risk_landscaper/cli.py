@@ -390,3 +390,54 @@ def export(
         out_path = output / "risk-landscape.jsonld"
         out_path.write_text(json.dumps(doc, indent=2))
         typer.echo(f"JSON-LD written to {out_path}")
+
+
+@app.command()
+def compare(
+    run_dirs: list[Path] = typer.Argument(..., help="Run output directories to compare (each must contain risk-landscape.yaml and policy-profile.json)"),
+    output: Path = typer.Option(..., "--output", "-o", help="Output directory for comparison report"),
+):
+    """Compare two or more risk landscape runs."""
+    if len(run_dirs) < 2:
+        typer.echo("Error: compare requires at least 2 run directories", err=True)
+        raise typer.Exit(1)
+
+    for d in run_dirs:
+        if not d.exists():
+            typer.echo(f"Error: {d} does not exist", err=True)
+            raise typer.Exit(1)
+
+    inputs = []
+    for d in run_dirs:
+        landscape_path = d / "risk-landscape.yaml"
+        profile_path = d / "policy-profile.json"
+
+        if not landscape_path.exists():
+            typer.echo(f"Error: {landscape_path} not found", err=True)
+            raise typer.Exit(1)
+        if not profile_path.exists():
+            typer.echo(f"Error: {profile_path} not found", err=True)
+            raise typer.Exit(1)
+
+        from risk_landscaper.models import RiskLandscape as RiskLandscapeModel
+        landscape = RiskLandscapeModel(**yaml.safe_load(landscape_path.read_text()))
+        profile = PolicyProfile(**json.loads(profile_path.read_text()))
+        inputs.append((d.name, landscape, profile))
+
+    from risk_landscaper.compare import build_comparison
+    comparison = build_comparison(inputs)
+
+    output.mkdir(parents=True, exist_ok=True)
+
+    comparison_path = output / "comparison.yaml"
+    comparison_path.write_text(yaml.dump(
+        comparison.model_dump(), default_flow_style=False, sort_keys=False,
+    ))
+    typer.echo(f"Comparison written to {comparison_path}")
+
+    from risk_landscaper.reports import build_comparison_report
+    build_comparison_report(comparison.model_dump(), output / "comparison-report.html")
+    typer.echo(f"Comparison report written to {output / 'comparison-report.html'}")
+
+    typer.echo(f"Compared {len(inputs)} landscapes: {len(comparison.shared_risks)} shared risks, "
+               + ", ".join(f"{len(v)} unique to {k}" for k, v in comparison.unique_risks.items()))
