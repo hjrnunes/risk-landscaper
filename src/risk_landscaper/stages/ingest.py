@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import time
 from typing import Literal
 
@@ -491,6 +492,123 @@ def _build_document(context: _SlimContext, policies: list[Policy]) -> PolicyProf
 
 
 # ---------------------------------------------------------------------------
+# Document chunking
+# ---------------------------------------------------------------------------
+
+PROMPT_OVERHEAD_TOKENS = 3000
+
+
+def _estimate_tokens(text: str) -> int:
+    return len(text) // 4
+
+
+def _max_doc_tokens(config: LLMConfig) -> int | None:
+    if config.max_context <= 0:
+        return None
+    budget = config.max_context - config.max_tokens - PROMPT_OVERHEAD_TOKENS
+    return max(budget, 0)
+
+
+def _chunk_document(text: str, max_chars: int) -> list[str]:
+    if len(text) <= max_chars:
+        return [text]
+
+    parts = re.split(r"(?=\n## )", text)
+
+    chunks: list[str] = []
+    current = ""
+    for part in parts:
+        if len(current) + len(part) > max_chars and current:
+            chunks.append(current.strip())
+            current = part
+        else:
+            current += part
+    if current.strip():
+        chunks.append(current.strip())
+
+    result: list[str] = []
+    for chunk in chunks:
+        if len(chunk) <= max_chars:
+            result.append(chunk)
+        else:
+            paragraphs = chunk.split("\n\n")
+            sub = ""
+            for para in paragraphs:
+                if len(sub) + len(para) + 2 > max_chars and sub:
+                    result.append(sub.strip())
+                    sub = para
+                else:
+                    sub += "\n\n" + para if sub else para
+            if sub.strip():
+                result.append(sub.strip())
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Chunked ingest orchestration
+# ---------------------------------------------------------------------------
+
+def _ingest_chunked(
+    document_text: str,
+    chunks: list[str],
+    input_format: str,
+    client: instructor.Instructor,
+    config: LLMConfig,
+    skip_enrichment: bool = False,
+    skip_entity_enrichment: bool = False,
+    domain_override: str | None = None,
+    organization_override: str | None = None,
+    report: RunReport | None = None,
+) -> PolicyProfile:
+    if report:
+        report.events.append({
+            "stage": "ingest",
+            "event": "chunked_processing",
+            "chunk_count": len(chunks),
+            "chunk_sizes": [len(c) for c in chunks],
+        })
+
+    context = extract_context(chunks[0], client, config, report=report)
+    if domain_override:
+        context = context.model_copy(update={"domain": domain_override})
+    if organization_override:
+        context = context.model_copy(update={"organization": organization_override})
+
+    all_policies: list[Policy] = []
+    seen_concepts: set[str] = set()
+    for i, chunk in enumerate(chunks):
+        logger.info("Policy extraction chunk %d/%d", i + 1, len(chunks))
+        chunk_policies = extract_policies(chunk, context, client, config, report=report)
+        for p in chunk_policies:
+            if p.policy_concept not in seen_concepts:
+                seen_concepts.add(p.policy_concept)
+                all_policies.append(p)
+
+    if not skip_enrichment:
+        enrichment_map: dict[str, Policy] = {}
+        for i, chunk in enumerate(chunks):
+            logger.info("Enrichment chunk %d/%d", i + 1, len(chunks))
+            enriched = enrich_policies(chunk, context, all_policies, client, config, report=report)
+            for p in enriched:
+                if p.policy_concept not in enrichment_map and p.boundary_examples:
+                    enrichment_map[p.policy_concept] = p
+        all_policies = [enrichment_map.get(p.policy_concept, p) for p in all_policies]
+
+    profile = _build_document(context, all_policies)
+
+    if not skip_entity_enrichment:
+        profile = enrich_entities(chunks[0], profile, client, config, report=report)
+    elif report:
+        report.events.append({
+            "stage": "ingest",
+            "event": "entity_enrichment_skipped",
+        })
+
+    return profile
+
+
+# ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
 
@@ -512,6 +630,21 @@ def ingest(
             "event": "input_format_detected",
             "format": input_format,
         })
+
+    # Check if document needs chunking
+    max_doc = _max_doc_tokens(config)
+    if max_doc is not None and _estimate_tokens(document_text) > max_doc and input_format != "json_array":
+        max_chars = max_doc * 4
+        chunks = _chunk_document(document_text, max_chars)
+        logger.info("Document too large (%d tokens est.), splitting into %d chunks", _estimate_tokens(document_text), len(chunks))
+        return _ingest_chunked(
+            document_text, chunks, input_format, client, config,
+            skip_enrichment=skip_enrichment,
+            skip_entity_enrichment=skip_entity_enrichment,
+            domain_override=domain_override,
+            organization_override=organization_override,
+            report=report,
+        )
 
     # Pass 1: Context extraction (always)
     context = extract_context(document_text, client, config, report=report)

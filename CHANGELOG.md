@@ -36,10 +36,20 @@ AIRO AI Card alignment — evolved the data model and pipeline to produce govern
   - Risk level computation: 5x5 risk matrix (likelihood x severity) applied to causal chain data. Falls back to max severity when no likelihood is available.
   - AIMS coverage analysis: inspects profile and landscape to determine which ISO/IEC 42001 AIMS activities are satisfied (A2 stakeholders, A4 policies, A6 risk assessment, A8 controls, A9 evaluations). Updates `GovernanceProvenance.aims_activities` dynamically and tags individual RiskCards.
 
+- **JSON Schema export** — `risk-landscaper schema` CLI command exports JSON Schema for `PolicyProfile` and `RiskLandscape` output formats. Enables downstream tooling to validate outputs and track schema evolution.
+- **VAIR provenance documentation** — `vair.py` module docstring documents the source ontology (VAIR v1.0, CC-BY-4.0, https://w3id.org/vair), authorship, and the boundary between ontology-derived types and project-specific keywords.
+- **Vendored nexus-mcp** — `RiskIndex`, `build_structural_context`, and `create_tool_handlers` extracted into `nexus.py`. Removed `nexus-mcp` path dependency; depends directly on `ai-atlas-nexus` (git) + `chromadb`.
+- **Document conversion** — PDF, DOCX, HTML input support via [markitdown](https://github.com/microsoft/markitdown). Optional `[docs]` extra (`pip install 'risk-landscaper[docs]'`). Auto-detected by file extension, converted to markdown before ingest.
+- **Data provenance tracking** — `provenance` field (`nexus`, `vair`, `heuristic`, `llm`) on causal chain items (`RiskSource`, `RiskConsequence`, `RiskImpact`, `RiskControl`, `RiskIncidentRef`). Tagged at creation time in `build_landscape` and `enrich_chains`. Rendered as color-coded badges in risk landscape and AI card reports with legend.
+- **Document chunking** — large documents that exceed the model context window are automatically split by markdown sections and processed in chunks. `--max-context` CLI option sets the model's context window size to enable chunking. Policies are deduplicated across chunks; enrichments are merged.
+- **Frontier safety policies** — 24 policy documents (18 PDFs + 2 markdown) from 12 organizations (Anthropic, OpenAI, DeepMind, Meta, Microsoft, xAI, NVIDIA, Amazon, G42, Cohere, NAVER, Magic) in `policy_examples/frontier_safety/`.
+- **Battery script subdirectory support** — `run_all_policies.py` gains `-d` flag to target a subdirectory of `policy_examples/`, with `just run-frontier` recipe for frontier safety policies. Uses `rglob` to discover files recursively.
+
 ### Changed
 
 - `nexus_adapter.py` uses `Organization` instead of `Stakeholder` for the org field.
 - Ingest enrichment prompt includes `governance_function` and decomposition fields.
+- Project version bumped to 0.2.0.
 
 ## [0.1.0] - 2026-04-21
 

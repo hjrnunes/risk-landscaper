@@ -17,6 +17,9 @@ from risk_landscaper.stages.ingest import (
     enrich_entities,
     parse_json_policies,
     ingest,
+    _estimate_tokens,
+    _max_doc_tokens,
+    _chunk_document,
     _SlimContext,
     _SlimNamedEntity,
     _SlimPolicyList,
@@ -760,3 +763,123 @@ def test_ingest_with_entity_enrichment(mock_client, mock_config):
 
     fca = next(r for r in result.regulations if r.name == "FCA")
     assert fca.jurisdiction == "United Kingdom"
+
+
+# ---------------------------------------------------------------------------
+# Document chunking
+# ---------------------------------------------------------------------------
+
+def test_estimate_tokens():
+    assert _estimate_tokens("a" * 400) == 100
+    assert _estimate_tokens("") == 0
+
+
+def test_max_doc_tokens_no_limit():
+    from risk_landscaper.llm import LLMConfig
+    config = LLMConfig(base_url="http://x", model="m", max_context=0)
+    assert _max_doc_tokens(config) is None
+
+
+def test_max_doc_tokens_with_limit():
+    from risk_landscaper.llm import LLMConfig
+    config = LLMConfig(base_url="http://x", model="m", max_context=16384, max_tokens=8192)
+    budget = _max_doc_tokens(config)
+    assert budget == 16384 - 8192 - 3000
+
+
+def test_chunk_document_fits():
+    text = "Short document"
+    assert _chunk_document(text, 1000) == [text]
+
+
+def test_chunk_document_splits_on_h2():
+    text = "# Title\n\nIntro paragraph.\n\n## Section A\n\nContent A.\n\n## Section B\n\nContent B."
+    chunks = _chunk_document(text, 60)
+    assert len(chunks) >= 2
+    assert "Section A" in chunks[0] or "Section A" in chunks[1]
+    assert "Section B" in chunks[-1]
+
+
+def test_chunk_document_falls_back_to_paragraphs():
+    text = "Para 1.\n\nPara 2.\n\nPara 3.\n\nPara 4."
+    chunks = _chunk_document(text, 20)
+    assert len(chunks) >= 2
+    for chunk in chunks:
+        assert len(chunk) <= 20
+
+
+def test_ingest_chunked_path(mock_client, mock_config):
+    """When max_context is set and document is large, chunking kicks in."""
+    mock_config.max_context = 3300
+    mock_config.max_tokens = 100
+
+    large_doc = "# Title\n\nIntro.\n\n## Section A\n\n" + "A content. " * 50 + "\n\n## Section B\n\n" + "B content. " * 50
+
+    mock_client.chat.completions.create.side_effect = [
+        # Pass 1: context (from first chunk)
+        _SlimContext(
+            organization="TestOrg", domain="tech", purpose=["testing"],
+            ai_systems=[], ai_users=[], ai_subjects=[],
+            governing_regulations=[], named_entities=[],
+        ),
+        # Pass 2: policies from chunk 1
+        _SlimPolicyList(policies=[
+            _SlimPolicy(policy_concept="PolicyA", concept_definition="About A"),
+        ]),
+        # Pass 2: policies from chunk 2
+        _SlimPolicyList(policies=[
+            _SlimPolicy(policy_concept="PolicyB", concept_definition="About B"),
+        ]),
+        # Pass 3: enrichment chunk 1
+        _SlimEnrichmentList(enrichments=[
+            _SlimEnrichment(
+                policy_concept="PolicyA", boundary_examples=[],
+                acceptable_uses=["use A"], risk_controls=[], human_involvement="",
+            ),
+        ]),
+        # Pass 3: enrichment chunk 2
+        _SlimEnrichmentList(enrichments=[
+            _SlimEnrichment(
+                policy_concept="PolicyB", boundary_examples=[],
+                acceptable_uses=["use B"], risk_controls=[], human_involvement="",
+            ),
+        ]),
+    ]
+
+    result = ingest(large_doc, "markdown", mock_client, mock_config, skip_entity_enrichment=True)
+    assert result.organization.name == "TestOrg"
+    concepts = {p.policy_concept for p in result.policies}
+    assert "PolicyA" in concepts
+    assert "PolicyB" in concepts
+
+
+def test_ingest_chunked_deduplicates_policies(mock_client, mock_config):
+    """Policies found in multiple chunks are deduplicated."""
+    mock_config.max_context = 3300
+    mock_config.max_tokens = 100
+
+    large_doc = "# Title\n\nIntro.\n\n## Section A\n\n" + "x " * 300 + "\n\n## Section B\n\n" + "y " * 300
+
+    mock_client.chat.completions.create.side_effect = [
+        _SlimContext(
+            organization="Org", domain="tech", purpose=[],
+            ai_systems=[], ai_users=[], ai_subjects=[],
+            governing_regulations=[], named_entities=[],
+        ),
+        # Both chunks find "SharedPolicy"
+        _SlimPolicyList(policies=[
+            _SlimPolicy(policy_concept="SharedPolicy", concept_definition="Def 1"),
+        ]),
+        _SlimPolicyList(policies=[
+            _SlimPolicy(policy_concept="SharedPolicy", concept_definition="Def 2"),
+            _SlimPolicy(policy_concept="UniquePolicy", concept_definition="Def 3"),
+        ]),
+        _SlimEnrichmentList(enrichments=[]),
+        _SlimEnrichmentList(enrichments=[]),
+    ]
+
+    result = ingest(large_doc, "markdown", mock_client, mock_config,
+                    skip_entity_enrichment=True)
+    concepts = [p.policy_concept for p in result.policies]
+    assert concepts.count("SharedPolicy") == 1
+    assert "UniquePolicy" in concepts

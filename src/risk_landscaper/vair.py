@@ -3,7 +3,15 @@
 Static extraction of VAIR v1.0 types with keyword-based matching against
 risk description/concern text. No LLM calls, no ontology parsing.
 
-Source: https://w3id.org/vair (Golpayegani, Pandit, Lewis — ADAPT Centre, TCD)
+Source: VAIR v1.0 ontology — https://w3id.org/vair
+Authors: Golpayegani, Pandit, Lewis (ADAPT Centre, Trinity College Dublin)
+Paper: "To Be High-Risk, or Not To Be" (FAccT 2023)
+License: CC-BY-4.0
+
+The type enumerations and hierarchy below were manually extracted from the
+VAIR OWL ontology (vair.ttl). Keywords are project-specific heuristics,
+not part of the ontology itself. When updating, diff against the canonical
+ontology at https://w3id.org/vair .
 """
 
 from dataclasses import dataclass

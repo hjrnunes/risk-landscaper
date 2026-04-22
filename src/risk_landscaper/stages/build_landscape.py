@@ -92,6 +92,7 @@ def _actions_to_controls(action_descriptions: list[str]) -> list[RiskControl]:
             description=desc,
             control_type=_infer_control_type(desc),
             targets=_infer_control_targets(desc),
+            provenance="nexus",
         )
         for desc in action_descriptions
         if desc
@@ -108,14 +109,14 @@ def _vair_enrich(description: str, concern: str) -> dict:
         result["source_subtypes"] = [m.id for m in matches["risk_sources"]]
     if matches["consequences"]:
         result["consequences"] = [
-            RiskConsequence(description=m.label)
+            RiskConsequence(description=m.label, provenance="vair")
             for m in matches["consequences"]
         ]
     if matches["impacts"]:
         area_matches = matches["impacted_areas"]
         area = area_matches[0].label.lower() if area_matches else None
         result["impacts"] = [
-            RiskImpact(description=m.label, area=area)
+            RiskImpact(description=m.label, area=area, provenance="vair")
             for m in matches["impacts"]
         ]
     return result
@@ -153,6 +154,7 @@ def _incidents_to_refs(raw_incidents: list[dict] | None) -> list[RiskIncidentRef
                 inc.get("hasStatus", ""),
                 inc.get("hasStatus", "").lower() if inc.get("hasStatus") else None,
             ),
+            provenance="nexus",
         )
         for inc in raw_incidents
     ]
@@ -215,6 +217,7 @@ def build_risk_landscape(
                 [RiskSource(
                     description=concern or description,
                     source_type=source_type,
+                    provenance="heuristic",
                 )]
                 if concern or description
                 else []

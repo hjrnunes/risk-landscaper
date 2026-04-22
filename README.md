@@ -43,9 +43,12 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
+
+# Optional: enable PDF, DOCX, HTML input support
+uv pip install 'risk-landscaper[docs]'
 ```
 
-Requires a local clone of [AI Atlas Nexus](https://github.com/ibm/ai-atlas-nexus) and an OpenAI-compatible LLM endpoint.
+Requires an OpenAI-compatible LLM endpoint. [AI Atlas Nexus](https://github.com/ibm/ai-atlas-nexus) is installed automatically from git.
 
 ## Usage
 
@@ -70,11 +73,15 @@ uv run python run_all_policies.py --base-url ... --model ... --nexus-base-dir ..
 uv run risk-landscaper run policy.json -o output/ \
   --base-url ... --model ... --nexus-base-dir ... \
   --debug output/debug/
+
+# Export JSON Schema for output formats
+uv run risk-landscaper schema -o schemas/
 ```
 
 ### Input Formats
 
 - **Markdown/text** — free-form policy documents (4 LLM passes: context, policies, enrichment, entity enrichment)
+- **PDF, DOCX, HTML** — converted to markdown via [markitdown](https://github.com/microsoft/markitdown), then processed as above. Requires `risk-landscaper[docs]` extra.
 - **JSON array** — `[{policy_concept, concept_definition}, ...]` (skips policy extraction pass)
 - **Nexus format** — `{ai_system, risks, risk_controls}` (pre-parsed, no ingest LLM calls; entity enrichment not available since there is no source document to extract from)
 
@@ -103,7 +110,7 @@ output/
 ## Development
 
 ```bash
-uv run pytest           # 260 tests
+uv run pytest           # 268 tests
 uv run pytest -v        # verbose
 ```
 

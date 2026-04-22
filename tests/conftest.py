@@ -5,7 +5,7 @@ from risk_landscaper.llm import LLMConfig
 
 @pytest.fixture
 def mock_config():
-    return LLMConfig(base_url="http://localhost:8000/v1", model="test-model")
+    return LLMConfig(base_url="http://localhost:8000/v1", model="test-model", max_context=0)
 
 
 @pytest.fixture

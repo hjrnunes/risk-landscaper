@@ -14,6 +14,7 @@ class LLMConfig:
     max_retries: int = 3
     max_tokens: int = 8192
     max_concurrent: int = 1
+    max_context: int = 0
 
 
 @dataclass

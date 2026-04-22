@@ -20,7 +20,26 @@ def main():
     """Risk landscaper — policy-driven risk landscape generation."""
 
 
+_MARKITDOWN_EXTENSIONS = {".pdf", ".docx", ".html", ".htm", ".pptx", ".xlsx"}
+
+
+def _convert_document(path: Path) -> str:
+    try:
+        from markitdown import MarkItDown
+    except ImportError:
+        raise typer.Exit(
+            f"Cannot convert {path.suffix} files without markitdown. "
+            f"Install it with: pip install 'risk-landscaper[docs]'"
+        )
+    converter = MarkItDown()
+    result = converter.convert(str(path))
+    return result.text_content
+
+
 def _load_input(path: Path) -> tuple[str, str, PolicyProfile | None]:
+    if path.suffix.lower() in _MARKITDOWN_EXTENSIONS:
+        text = _convert_document(path)
+        return text, "markdown", None
     text = path.read_text()
     if path.suffix == ".json":
         raw = json.loads(text)
@@ -36,8 +55,7 @@ def _load_input(path: Path) -> tuple[str, str, PolicyProfile | None]:
 
 
 def _create_risk_handlers(nexus_base_dir: str, nexus_chroma_dir: Path) -> dict:
-    from nexus_mcp.server import create_tool_handlers
-    from nexus_mcp.risk_index import RiskIndex
+    from risk_landscaper.nexus import RiskIndex, build_structural_context, create_tool_handlers
     from ai_atlas_nexus import AIAtlasNexus
 
     nexus = AIAtlasNexus(base_dir=nexus_base_dir)
@@ -48,8 +66,6 @@ def _create_risk_handlers(nexus_base_dir: str, nexus_chroma_dir: Path) -> dict:
     taxonomies = nexus.get_all_taxonomies()
     groups = nexus.get_all("groups")
     nexus_chroma_dir.mkdir(parents=True, exist_ok=True)
-
-    from nexus_mcp.risk_index import build_structural_context
 
     idx = RiskIndex(nexus_chroma_dir)
     if idx.needs_reindex(len(all_risks)):
@@ -63,7 +79,7 @@ def _create_risk_handlers(nexus_base_dir: str, nexus_chroma_dir: Path) -> dict:
 
 @app.command()
 def run(
-    policy_file: Path = typer.Argument(..., help="Policy document (.md/.txt/.json)"),
+    policy_file: Path = typer.Argument(..., help="Policy document (.md/.txt/.json/.pdf/.docx/.html)"),
     output: Path = typer.Option(..., "--output", "-o", help="Output directory"),
     base_url: str = typer.Option(None, "--base-url", envvar="REFINER_BASE_URL", help="LLM API base URL"),
     model: str = typer.Option(None, "--model", envvar="REFINER_MODEL", help="LLM model name"),
@@ -76,6 +92,7 @@ def run(
     max_concurrent: int = typer.Option(1, "--max-concurrent", help="Max parallel LLM calls in map_risks"),
     input_format: str = typer.Option(None, "--input-format", help="Input format: markdown or json_array (auto-detected if omitted)"),
     skip_chain_enrichment: bool = typer.Option(False, "--skip-chain-enrichment", help="Skip LLM causal chain enrichment"),
+    max_context: int = typer.Option(0, "--max-context", help="Model context window size in tokens (0 = no limit). When set, large documents are chunked to fit."),
 ):
     """Run the risk landscaper pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains."""
     if not policy_file.exists():
@@ -90,7 +107,7 @@ def run(
         typer.echo("Error: --nexus-base-dir is required (or set NEXUS_BASE_DIR)", err=True)
         raise typer.Exit(1)
 
-    config = LLMConfig(base_url=base_url, model=model, api_key=api_key, max_concurrent=max_concurrent)
+    config = LLMConfig(base_url=base_url, model=model, api_key=api_key, max_concurrent=max_concurrent, max_context=max_context)
     tracker = TokenTracker()
     client = create_client(config, tracker=tracker)
     debug.configure(debug_dir)
@@ -278,3 +295,27 @@ def run(
 
     typer.echo(f"Token usage: {tracker.prompt_tokens:,} prompt + {tracker.completion_tokens:,} completion = {tracker.total_tokens:,} total ({tracker.calls} calls)")
     typer.echo("Done.")
+
+
+@app.command()
+def schema(
+    output: Path = typer.Option(None, "--output", "-o", help="Output directory (default: stdout)"),
+):
+    """Export JSON Schema for PolicyProfile and RiskLandscape output formats."""
+    from risk_landscaper.models import PolicyProfile, RiskLandscape
+
+    schemas = {
+        "policy-profile": PolicyProfile.model_json_schema(),
+        "risk-landscape": RiskLandscape.model_json_schema(),
+    }
+
+    if output:
+        output.mkdir(parents=True, exist_ok=True)
+        for name, s in schemas.items():
+            path = output / f"{name}.schema.json"
+            path.write_text(json.dumps(s, indent=2) + "\n")
+            typer.echo(f"Written {path}")
+    else:
+        for name, s in schemas.items():
+            typer.echo(f"--- {name} ---")
+            typer.echo(json.dumps(s, indent=2))

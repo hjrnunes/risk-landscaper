@@ -115,12 +115,14 @@ class RiskSource(BaseModel):
     source_type: str | None = None
     likelihood: str | None = None
     exploits_vulnerability: str | None = None
+    provenance: Literal["nexus", "vair", "heuristic", "llm"] | None = None
 
 
 class RiskConsequence(BaseModel):
     description: str
     likelihood: str | None = None
     severity: str | None = None
+    provenance: Literal["nexus", "vair", "heuristic", "llm"] | None = None
 
 
 class RiskImpact(BaseModel):
@@ -129,12 +131,14 @@ class RiskImpact(BaseModel):
     area: str | None = None
     affected_stakeholders: list[str] = []
     harm_type: str | None = None
+    provenance: Literal["nexus", "vair", "heuristic", "llm"] | None = None
 
 
 class RiskControl(BaseModel):
     description: str
     control_type: Literal["detect", "evaluate", "mitigate", "eliminate"] | None = None
     targets: str | None = None
+    provenance: Literal["nexus", "vair", "heuristic", "llm"] | None = None
 
 
 class RiskIncidentRef(BaseModel):
@@ -142,6 +146,7 @@ class RiskIncidentRef(BaseModel):
     description: str | None = None
     source_uri: str | None = None
     status: str | None = None
+    provenance: Literal["nexus", "vair", "heuristic", "llm"] | None = None
 
 
 class EvaluationRef(BaseModel):

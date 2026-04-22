@@ -9,21 +9,27 @@ import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-POLICY_DIR = Path(__file__).parent / "policy_examples"
-RUNS_DIR = Path(__file__).parent / "runs"
+ROOT = Path(__file__).parent
+POLICY_DIR = ROOT / "policy_examples"
+RUNS_DIR = ROOT / "runs"
 NEXUS_BASE_DIR = "/Users/hjrnunes/workspace/redhat/ibm/ai-atlas-nexus"
 
+POLICY_EXTENSIONS = {".json", ".md", ".txt", ".pdf", ".docx", ".html", ".htm"}
 
-def run_one(policy: Path, base_url: str, model: str) -> tuple[str, bool, str]:
+
+def run_one(policy: Path, base_url: str, model: str, runs_dir: Path, max_context: int = 0) -> tuple[str, bool, str]:
     name = policy.stem
-    out = RUNS_DIR / name
+    out = runs_dir / name
+    cmd = [
+        "uv", "run", "risk-landscaper", "run", str(policy), "-o", str(out),
+        "--base-url", base_url,
+        "--model", model,
+        "--nexus-base-dir", NEXUS_BASE_DIR,
+    ]
+    if max_context > 0:
+        cmd.extend(["--max-context", str(max_context)])
     result = subprocess.run(
-        [
-            "uv", "run", "risk-landscaper", "run", str(policy), "-o", str(out),
-            "--base-url", base_url,
-            "--model", model,
-            "--nexus-base-dir", NEXUS_BASE_DIR,
-        ],
+        cmd,
         capture_output=True,
         text=True,
     )
@@ -36,15 +42,26 @@ def main():
     parser.add_argument("base_url", help="LLM API base URL")
     parser.add_argument("model", help="LLM model name")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count(), help="Max parallel jobs (default: CPU count)")
+    parser.add_argument("-d", "--dir", type=str, default=None, help="Subdirectory of policy_examples/ to run (e.g. frontier_safety)")
+    parser.add_argument("--max-context", type=int, default=0, help="Model context window size in tokens (passed to risk-landscaper)")
     args = parser.parse_args()
 
-    if RUNS_DIR.exists():
-        shutil.rmtree(RUNS_DIR)
-    RUNS_DIR.mkdir()
+    source_dir = POLICY_DIR / args.dir if args.dir else POLICY_DIR
+    if not source_dir.is_dir():
+        print(f"Directory not found: {source_dir}")
+        sys.exit(1)
 
-    policies = sorted(p for p in POLICY_DIR.iterdir() if not p.name.startswith("."))
+    runs_dir = RUNS_DIR / args.dir if args.dir else RUNS_DIR
+    if runs_dir.exists():
+        shutil.rmtree(runs_dir)
+    runs_dir.mkdir(parents=True)
+
+    policies = sorted(
+        p for p in source_dir.rglob("*")
+        if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in POLICY_EXTENSIONS
+    )
     if not policies:
-        print("No policy files found in policy_examples/")
+        print(f"No policy files found in {source_dir}")
         sys.exit(1)
 
     print(f"Running {len(policies)} policies with {args.jobs} parallel jobs\n")
@@ -52,7 +69,7 @@ def main():
     failed = []
     with ProcessPoolExecutor(max_workers=args.jobs) as pool:
         futures = {
-            pool.submit(run_one, policy, args.base_url, args.model): policy
+            pool.submit(run_one, policy, args.base_url, args.model, runs_dir, args.max_context): policy
             for policy in policies
         }
         for future in as_completed(futures):
@@ -68,7 +85,7 @@ def main():
     print(f"\nDone. {len(policies) - len(failed)} succeeded, {len(failed)} failed.")
     if failed:
         print(f"Failed: {', '.join(failed)}")
-    print(f"Output: {RUNS_DIR}")
+    print(f"Output: {runs_dir}")
     sys.exit(1 if failed else 0)
 
 

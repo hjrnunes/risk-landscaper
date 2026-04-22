@@ -14,6 +14,7 @@ src/risk_landscaper/
   debug.py               # Per-call debug logging
   prompts.py             # Jinja2 prompt rendering
   reports.py             # HTML report generation (ingest, landscape, AI card, run)
+  nexus.py               # Vendored risk index + query handlers (from nexus-mcp)
   nexus_adapter.py       # Nexus payload -> PolicyProfile projection
   vair.py                # VAIR v1.0 vocabulary matching for causal chains
   stages/
@@ -27,8 +28,8 @@ src/risk_landscaper/
     prompts/             # Jinja2 templates (system + user per stage)
     ingest_cot.json      # Chain-of-thought examples for ingest
     *_template.html      # HTML report templates (Tailwind + Alpine.js)
-tests/                   # pytest suite (260 tests)
-policy_examples/         # 11 policy files across 6 domains
+tests/                   # pytest suite (276 tests)
+policy_examples/         # 11 policy files across 6 domains + 24 frontier safety policies
 docs/
   design.md              # AIRO AI Card alignment design
   work-tracker.md        # Implementation status and remaining work
@@ -80,6 +81,8 @@ uv run pytest tests/test_models.py  # single file
 ### Pipeline Pattern
 
 - 6-stage pipeline: ingest -> detect_domain -> map_risks -> build_landscape -> enrich_chains -> assess
+- Document conversion: PDF, DOCX, HTML converted to markdown via markitdown (optional `[docs]` extra) before ingest
+- Document chunking: large documents auto-split by markdown sections when `--max-context` is set. Policies deduplicated across chunks.
 - Ingest has 4 LLM passes: context extraction, policy extraction, policy enrichment, entity enrichment
 - Entity enrichment (pass 4) populates AIRO fields on stakeholders, AI systems, organization, and regulations. Skipped for Nexus pre-parsed inputs (no source document to extract from).
 - Ground-truth cross-mappings from knowledge graph, never LLM-generated

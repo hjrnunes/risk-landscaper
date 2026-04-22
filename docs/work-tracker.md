@@ -67,7 +67,13 @@ Status of the AIRO AI Card alignment implementation.
 - [x] Per-card AIMS activity tagging (aimsA6 always, aimsA8 if controls, aimsA9 if evaluations)
 - [x] Dynamic `GovernanceProvenance.aims_activities` (replaces hardcoded `["aimsA6"]`)
 
-### Tests (260 total)
+### Document Conversion
+
+- [x] PDF, DOCX, HTML input support via markitdown (optional `[docs]` extra)
+- [x] Auto-detection by file extension in `_load_input()`
+- [x] Graceful error when markitdown not installed
+
+### Tests (268 total)
 
 - [x] 19 model tests
 - [x] 32 build_landscape tests (risk_type, controls, provenance, incidents, VAIR, source/control inference)
@@ -79,7 +85,7 @@ Status of the AIRO AI Card alignment implementation.
 - [x] 20 VAIR vocabulary matching tests
 - [x] 76 policy battery tests across 11 example files
 - [x] 30 assessment tests (risk matrix, max level, AIMS coverage, per-card tagging, report events)
-- [x] 3 CLI tests
+- [x] 11 CLI tests (schema export, document conversion, input validation)
 
 ### Documentation
 
@@ -103,9 +109,9 @@ Status of the AIRO AI Card alignment implementation.
 
 ### Infrastructure
 
-- [ ] **Nexus-mcp dependency** — currently uses `path = "../taxonomy-refiner/nexus-mcp"`. Needs to be published or vendored for standalone use.
-- [ ] **VAIR vocabulary data** — source and package VAIR type enumerations for matching.
-- [ ] **Output format versioning** — version field on risk-landscape.yaml for schema evolution.
+- [x] **Nexus-mcp dependency** — vendored `RiskIndex`, `build_structural_context`, and `create_tool_handlers` into `nexus.py`. Depends directly on `ai-atlas-nexus` + `chromadb`.
+- [x] **VAIR vocabulary data** — provenance documented in `vair.py` (VAIR v1.0, CC-BY-4.0, https://w3id.org/vair).
+- [x] **Output format versioning** — `schema` CLI command exports JSON Schema from Pydantic models. Version field on models (`airo_version`, `version`).
 
 ### Known Limitations
 

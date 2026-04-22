@@ -89,6 +89,7 @@ def _merge_chain(card: RiskCard, chain: _CausalChain) -> None:
             description=s.description,
             source_type=s.source_type,
             likelihood=s.likelihood,
+            provenance="llm",
         )
         for s in chain.risk_sources
     ]
@@ -97,6 +98,7 @@ def _merge_chain(card: RiskCard, chain: _CausalChain) -> None:
             description=c.description,
             likelihood=c.likelihood,
             severity=c.severity,
+            provenance="llm",
         )
         for c in chain.consequences
     ]
@@ -107,6 +109,7 @@ def _merge_chain(card: RiskCard, chain: _CausalChain) -> None:
             area=i.area,
             affected_stakeholders=i.affected_stakeholders,
             harm_type=i.harm_type,
+            provenance="llm",
         )
         for i in chain.impacts
     ]
