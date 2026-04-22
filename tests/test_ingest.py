@@ -703,6 +703,92 @@ def test_enrich_entities_emits_report(mock_client, mock_config):
     assert entity_events[0]["org_enriched"] is True
 
 
+def test_enrich_entities_populates_trustworthy_interests(mock_client, mock_config):
+    profile = _make_profile()
+    mock_client.chat.completions.create.return_value = _SlimEntityEnrichment(
+        organization=_SlimOrgDetail(),
+        stakeholders=[
+            _SlimStakeholderDetail(
+                name="staff",
+                involvement="intended",
+                activity="active",
+                awareness="informed",
+                output_control="correct",
+                relationship="internal",
+                interests=["efficiency", "accuracy"],
+            ),
+            _SlimStakeholderDetail(
+                name="customers",
+                involvement="unintended",
+                activity="passive",
+                awareness="uninformed",
+                output_control="cannot_opt_out",
+                relationship="external",
+                interests=["privacy", "fair treatment"],
+            ),
+        ],
+    )
+
+    result = enrich_entities(SAMPLE_MARKDOWN, profile, mock_client, mock_config)
+
+    staff = next(s for s in result.stakeholders if s.name == "staff")
+    assert staff.interests == ["efficiency", "accuracy"]
+    assert "accuracy" in staff.trustworthy_interests
+
+    customers = next(s for s in result.stakeholders if s.name == "customers")
+    assert customers.interests == ["privacy", "fair treatment"]
+    assert "privacy" in customers.trustworthy_interests
+    assert "fairness" in customers.trustworthy_interests
+
+
+def test_enrich_entities_trustworthy_interests_empty_when_no_match(mock_client, mock_config):
+    profile = _make_profile()
+    mock_client.chat.completions.create.return_value = _SlimEntityEnrichment(
+        organization=_SlimOrgDetail(),
+        stakeholders=[
+            _SlimStakeholderDetail(
+                name="staff",
+                involvement="intended",
+                activity="active",
+                awareness="informed",
+                output_control="correct",
+                relationship="internal",
+                interests=["efficiency", "cost reduction"],
+            ),
+        ],
+    )
+
+    result = enrich_entities(SAMPLE_MARKDOWN, profile, mock_client, mock_config)
+
+    staff = next(s for s in result.stakeholders if s.name == "staff")
+    assert staff.interests == ["efficiency", "cost reduction"]
+    assert staff.trustworthy_interests == []
+
+
+def test_enrich_entities_trustworthy_interests_empty_when_no_interests(mock_client, mock_config):
+    profile = _make_profile()
+    mock_client.chat.completions.create.return_value = _SlimEntityEnrichment(
+        organization=_SlimOrgDetail(),
+        stakeholders=[
+            _SlimStakeholderDetail(
+                name="staff",
+                involvement="intended",
+                activity="active",
+                awareness="informed",
+                output_control="correct",
+                relationship="internal",
+                interests=[],
+            ),
+        ],
+    )
+
+    result = enrich_entities(SAMPLE_MARKDOWN, profile, mock_client, mock_config)
+
+    staff = next(s for s in result.stakeholders if s.name == "staff")
+    assert staff.interests == []
+    assert staff.trustworthy_interests == []
+
+
 def test_ingest_with_entity_enrichment(mock_client, mock_config):
     mock_client.chat.completions.create.side_effect = [
         # Pass 1: context

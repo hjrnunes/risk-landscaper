@@ -169,7 +169,7 @@ TRUSTWORTHY_CHARACTERISTICS: list[TrustworthyCharacteristic] = [
     TrustworthyCharacteristic(
         "accuracy", "implicit", "Art.15(1)",
         ["DegradedAccuracy", "LowAccuracy"],
-        ["inaccura"],
+        ["accura", "inaccura"],
     ),
     TrustworthyCharacteristic(
         "robustness", "implicit", "Art.15(3)",
@@ -189,7 +189,7 @@ TRUSTWORTHY_CHARACTERISTICS: list[TrustworthyCharacteristic] = [
     TrustworthyCharacteristic(
         "fairness", "cl.11", "Art.10",
         ["Bias", "DiscriminatoryTreatment", "UnfavourableTreatment"],
-        [],
+        ["fair", "equitab", "non-discriminat"],
     ),
     TrustworthyCharacteristic(
         "privacy", "cl.10", "Art.10",

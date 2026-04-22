@@ -19,6 +19,7 @@ from risk_landscaper.models import (
     Stakeholder,
 )
 from risk_landscaper.prompts import render_prompt, load_cot
+from risk_landscaper.vair import match_trustworthy_characteristics
 from risk_landscaper import debug
 
 logger = logging.getLogger(__name__)
@@ -400,6 +401,11 @@ def enrich_entities(
     for s in profile.stakeholders:
         detail = stakeholder_map.get(s.name)
         if detail:
+            interests = detail.interests or []
+            trustworthy_interests = (
+                match_trustworthy_characteristics(" ".join(interests), {})
+                if interests else []
+            )
             enriched_stakeholders.append(Stakeholder(
                 name=s.name,
                 roles=s.roles,
@@ -409,7 +415,8 @@ def enrich_entities(
                 awareness=detail.awareness or None,
                 output_control=detail.output_control or None,
                 relationship=detail.relationship or None,
-                interests=detail.interests or [],
+                interests=interests,
+                trustworthy_interests=trustworthy_interests,
             ))
         else:
             enriched_stakeholders.append(s)
