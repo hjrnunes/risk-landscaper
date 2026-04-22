@@ -56,8 +56,9 @@ def main():
         shutil.rmtree(runs_dir)
     runs_dir.mkdir(parents=True)
 
+    glob = source_dir.rglob("*") if args.dir else source_dir.glob("*")
     policies = sorted(
-        p for p in source_dir.rglob("*")
+        p for p in glob
         if p.is_file() and not p.name.startswith(".") and p.suffix.lower() in POLICY_EXTENSIONS
     )
     if not policies:
