@@ -11,10 +11,25 @@ JSONLD_CONTEXT = {
     "vair": "https://w3id.org/vair#",
     "nexus": "https://ibm.github.io/ai-atlas-nexus/ontology/",
     "dpv": "https://w3id.org/dpv#",
+    "prov": "http://www.w3.org/ns/prov#",
     "rl": "https://trustyai.io/risk-landscaper/",
     "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
     "airo:isRiskSourceFor": {"@reverse": "airo:isRiskSourceFor"},
     "airo:modifiesRiskConcept": {"@reverse": "airo:modifiesRiskConcept"},
+}
+
+PROVENANCE_AGENTS = {
+    "nexus": "rl:NexusKnowledgeGraph",
+    "vair": "rl:VAIRMatcher",
+    "heuristic": "rl:HeuristicEngine",
+    "llm": "rl:LLMAgent",
+}
+
+PROVENANCE_ACTIVITIES = {
+    "nexus": "rl:BuildLandscape",
+    "vair": "rl:BuildLandscape",
+    "heuristic": "rl:BuildLandscape",
+    "llm": "rl:EnrichChains",
 }
 
 SOURCE_TYPE_TO_VAIR = {
@@ -36,6 +51,12 @@ _VAIR_IDS = {t.id for t in RISK_SOURCES + CONSEQUENCES + IMPACTS + IMPACTED_AREA
 _IMPACTED_AREA_IDS = {t.id for t in IMPACTED_AREAS}
 
 
+def _attach_provenance(node: dict, provenance: str | None) -> None:
+    if provenance and provenance in PROVENANCE_AGENTS:
+        node["prov:wasAttributedTo"] = {"@id": PROVENANCE_AGENTS[provenance]}
+        node["prov:wasGeneratedBy"] = {"@id": PROVENANCE_ACTIVITIES[provenance]}
+
+
 def _vair_iri(value: str) -> str | None:
     if value in _VAIR_IDS:
         return f"vair:{value}"
@@ -53,6 +74,7 @@ def _serialize_risk_source(src) -> dict:
         node["airo:hasLikelihood"] = src.likelihood
     if src.exploits_vulnerability:
         node["rl:exploitsVulnerability"] = src.exploits_vulnerability
+    _attach_provenance(node, src.provenance)
     return node
 
 
@@ -62,6 +84,7 @@ def _serialize_consequence(cons) -> dict:
         node["airo:hasLikelihood"] = cons.likelihood
     if cons.severity:
         node["airo:hasSeverity"] = cons.severity
+    _attach_provenance(node, cons.provenance)
     return node
 
 
@@ -79,6 +102,7 @@ def _serialize_impact(imp) -> dict:
         node["airo:hasImpactOnArea"] = area_iri if area_iri else imp.area
     if imp.affected_stakeholders:
         node["airo:hasImpactOnStakeholder"] = imp.affected_stakeholders
+    _attach_provenance(node, imp.provenance)
     return node
 
 
@@ -90,6 +114,7 @@ def _serialize_control(ctrl) -> dict:
             node["rl:controlFunction"] = iri
     if ctrl.targets:
         node["rl:controlTargets"] = ctrl.targets
+    _attach_provenance(node, ctrl.provenance)
     return node
 
 
@@ -101,6 +126,7 @@ def _serialize_incident(inc) -> dict:
         node["rdfs:seeAlso"] = inc.source_uri
     if inc.status:
         node["rl:incidentStatus"] = inc.status
+    _attach_provenance(node, inc.provenance)
     return node
 
 
@@ -132,10 +158,12 @@ def _serialize_coverage_gap(gap) -> dict:
     return node
 
 
-def _serialize_provenance(prov) -> dict:
-    node: dict = {}
+def _serialize_provenance(prov, timestamp: str = "") -> dict:
+    node: dict = {"@type": "prov:Activity"}
     if prov.produced_by:
-        node["rl:producedBy"] = prov.produced_by
+        node["prov:wasAssociatedWith"] = {"@id": f"rl:{prov.produced_by}"}
+    if timestamp:
+        node["prov:endedAtTime"] = timestamp
     if prov.governance_function:
         node["rl:governanceFunction"] = prov.governance_function
     if prov.aims_activities:
@@ -194,7 +222,7 @@ def landscape_to_jsonld(landscape: RiskLandscape) -> dict:
     doc: dict = {
         "@context": dict(JSONLD_CONTEXT),
         "@id": f"rl:{landscape.run_slug}" if landscape.run_slug else "rl:unnamed",
-        "@type": "rl:RiskLandscape",
+        "@type": ["rl:RiskLandscape", "prov:Entity"],
         "rl:version": landscape.version,
         "rl:hasRiskCard": [_serialize_risk_card(card) for card in landscape.risks],
     }
@@ -216,7 +244,8 @@ def landscape_to_jsonld(landscape: RiskLandscape) -> dict:
     if landscape.coverage_gaps:
         doc["rl:coverageGap"] = [_serialize_coverage_gap(g) for g in landscape.coverage_gaps]
     if landscape.provenance:
-        doc["rl:provenance"] = _serialize_provenance(landscape.provenance)
+        prov_node = _serialize_provenance(landscape.provenance, landscape.timestamp)
+        doc["prov:wasGeneratedBy"] = prov_node
     return doc
 
 

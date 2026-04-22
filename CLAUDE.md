@@ -29,8 +29,9 @@ src/risk_landscaper/
     prompts/             # Jinja2 templates (system + user per stage)
     ingest_cot.json      # Chain-of-thought examples for ingest
     *_template.html      # HTML report templates (Tailwind + Alpine.js)
-tests/                   # pytest suite (276 tests)
-policy_examples/         # 11 policy files across 6 domains + 24 frontier safety policies
+tests/                   # pytest suite (333 tests)
+policy_examples/         # 11 standard + 12 frontier safety policies (subdirs = multi-doc groups)
+batteries/               # YAML battery configs for run_all_policies.py
 docs/
   design.md              # AIRO Risk Card alignment design
   work-tracker.md        # Implementation status and remaining work
@@ -98,6 +99,7 @@ uv run pytest tests/test_models.py  # single file
 - `RunReport` events with `report=None` default + `if report:` guards
 - Multi-document ingest: multiple files ingested independently, PolicyProfiles merged via `merge.py` (name-keyed dedup, enrichment union). `source_documents` provenance on Policy and PolicyProfile.
 - HTML reports generated alongside YAML/JSON artifacts (Tailwind + Alpine.js, `__REPORT_DATA__` JSON embedding)
+- PROV-O provenance in JSON-LD: element-level `prov:wasAttributedTo` / `prov:wasGeneratedBy` on causal chain elements. Four agents (`rl:NexusKnowledgeGraph`, `rl:VAIRMatcher`, `rl:HeuristicEngine`, `rl:LLMAgent`), two activities (`rl:BuildLandscape`, `rl:EnrichChains`). Internal models keep the flat `provenance` string; PROV-O mapping lives in `serialize.py`.
 
 ### Prompt Templates
 

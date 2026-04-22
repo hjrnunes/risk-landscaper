@@ -1,2 +1,8 @@
-run-all base_url model dir="" max_context="0":
-    python run_all_policies.py {{base_url}} {{model}} {{ if dir != "" { "-d " + dir } else { "" } }} --max-context {{max_context}}
+run-battery battery base_url model="" max_context="":
+    python run_all_policies.py {{battery}} --base-url {{base_url}} {{ if model != "" { "--model " + model } else { "" } }} {{ if max_context != "" { "--max-context " + max_context } else { "" } }}
+
+run-standard base_url model="" max_context="":
+    just run-battery batteries/standard.yaml {{base_url}} {{model}} {{max_context}}
+
+run-frontier base_url model="" max_context="":
+    just run-battery batteries/frontier.yaml {{base_url}} {{model}} {{max_context}}

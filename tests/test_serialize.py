@@ -1,6 +1,6 @@
 # tests/test_serialize.py
 from risk_landscaper.models import RiskLandscape, RiskCard, RiskSource, RiskConsequence, RiskImpact, RiskControl, RiskIncidentRef, EvaluationRef, GovernanceProvenance, PolicySourceRef, KnowledgeBaseRef, CoverageGap
-from risk_landscaper.serialize import landscape_to_jsonld, SOURCE_TYPE_TO_VAIR, _vair_iri
+from risk_landscaper.serialize import landscape_to_jsonld, SOURCE_TYPE_TO_VAIR, PROVENANCE_AGENTS, PROVENANCE_ACTIVITIES, _vair_iri
 
 
 def test_empty_landscape_has_context_and_type():
@@ -12,8 +12,9 @@ def test_empty_landscape_has_context_and_type():
     assert ctx["vair"] == "https://w3id.org/vair#"
     assert ctx["nexus"] == "https://ibm.github.io/ai-atlas-nexus/ontology/"
     assert ctx["dpv"] == "https://w3id.org/dpv#"
+    assert ctx["prov"] == "http://www.w3.org/ns/prov#"
     assert ctx["rl"] == "https://trustyai.io/risk-landscaper/"
-    assert result["@type"] == "rl:RiskLandscape"
+    assert result["@type"] == ["rl:RiskLandscape", "prov:Entity"]
     assert result["@id"] == "rl:test-run"
     assert result["rl:version"] == "0.2"
     assert result["rl:hasRiskCard"] == []
@@ -270,6 +271,7 @@ def test_envelope_metadata():
 def test_provenance_serializes():
     landscape = RiskLandscape(
         run_slug="test-run",
+        timestamp="2026-04-22T10:00:00Z",
         provenance=GovernanceProvenance(
             produced_by="risk-landscaper",
             governance_function="evaluate",
@@ -278,8 +280,10 @@ def test_provenance_serializes():
         ),
     )
     result = landscape_to_jsonld(landscape)
-    prov = result["rl:provenance"]
-    assert prov["rl:producedBy"] == "risk-landscaper"
+    prov = result["prov:wasGeneratedBy"]
+    assert prov["@type"] == "prov:Activity"
+    assert prov["prov:wasAssociatedWith"] == {"@id": "rl:risk-landscaper"}
+    assert prov["prov:endedAtTime"] == "2026-04-22T10:00:00Z"
     assert prov["rl:governanceFunction"] == "evaluate"
     assert prov["rl:aimsActivity"] == ["aimsA6", "aimsA8"]
     assert prov["rl:reviewStatus"] == "draft"
@@ -377,3 +381,137 @@ def test_incidents_use_rl_hasIncident_key():
     card = result["rl:hasRiskCard"][0]
     assert "rl:hasIncident" in card
     assert "dpv:Incident" not in card
+
+
+# --- PROV-O attribution tests ---
+
+
+def test_risk_source_provenance_nexus():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                risk_sources=[RiskSource(description="Known attack vector", provenance="nexus")],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    src = result["rl:hasRiskCard"][0]["airo:isRiskSourceFor"][0]
+    assert src["prov:wasAttributedTo"] == {"@id": "rl:NexusKnowledgeGraph"}
+    assert src["prov:wasGeneratedBy"] == {"@id": "rl:BuildLandscape"}
+
+
+def test_consequence_provenance_vair():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                consequences=[RiskConsequence(description="Model degradation", provenance="vair")],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    cons = result["rl:hasRiskCard"][0]["airo:hasConsequence"][0]
+    assert cons["prov:wasAttributedTo"] == {"@id": "rl:VAIRMatcher"}
+    assert cons["prov:wasGeneratedBy"] == {"@id": "rl:BuildLandscape"}
+
+
+def test_impact_provenance_llm():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                impacts=[RiskImpact(description="User harm", provenance="llm")],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    imp = result["rl:hasRiskCard"][0]["airo:hasImpact"][0]
+    assert imp["prov:wasAttributedTo"] == {"@id": "rl:LLMAgent"}
+    assert imp["prov:wasGeneratedBy"] == {"@id": "rl:EnrichChains"}
+
+
+def test_control_provenance_nexus():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                controls=[RiskControl(description="Monitor outputs", control_type="detect", provenance="nexus")],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    ctrl = result["rl:hasRiskCard"][0]["airo:modifiesRiskConcept"][0]
+    assert ctrl["prov:wasAttributedTo"] == {"@id": "rl:NexusKnowledgeGraph"}
+    assert ctrl["prov:wasGeneratedBy"] == {"@id": "rl:BuildLandscape"}
+
+
+def test_incident_provenance_nexus():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                incidents=[RiskIncidentRef(name="Test Incident", provenance="nexus")],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    inc = result["rl:hasRiskCard"][0]["rl:hasIncident"][0]
+    assert inc["prov:wasAttributedTo"] == {"@id": "rl:NexusKnowledgeGraph"}
+    assert inc["prov:wasGeneratedBy"] == {"@id": "rl:BuildLandscape"}
+
+
+def test_no_provenance_omits_prov_triples():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                risk_sources=[RiskSource(description="No provenance set")],
+                consequences=[RiskConsequence(description="No provenance set")],
+                impacts=[RiskImpact(description="No provenance set")],
+                controls=[RiskControl(description="No provenance set")],
+                incidents=[RiskIncidentRef(name="No provenance set")],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    card = result["rl:hasRiskCard"][0]
+    assert "prov:wasAttributedTo" not in card["airo:isRiskSourceFor"][0]
+    assert "prov:wasAttributedTo" not in card["airo:hasConsequence"][0]
+    assert "prov:wasAttributedTo" not in card["airo:hasImpact"][0]
+    assert "prov:wasAttributedTo" not in card["airo:modifiesRiskConcept"][0]
+    assert "prov:wasAttributedTo" not in card["rl:hasIncident"][0]
+
+
+def test_heuristic_provenance():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                risk_sources=[RiskSource(description="Inferred source", provenance="heuristic")],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    src = result["rl:hasRiskCard"][0]["airo:isRiskSourceFor"][0]
+    assert src["prov:wasAttributedTo"] == {"@id": "rl:HeuristicEngine"}
+    assert src["prov:wasGeneratedBy"] == {"@id": "rl:BuildLandscape"}
+
+
+def test_provenance_agents_cover_all_tags():
+    expected_tags = {"nexus", "vair", "heuristic", "llm"}
+    assert set(PROVENANCE_AGENTS.keys()) == expected_tags
+    assert set(PROVENANCE_ACTIVITIES.keys()) == expected_tags
+
+
+def test_landscape_without_provenance_omits_wasGeneratedBy():
+    landscape = RiskLandscape(run_slug="test-run")
+    result = landscape_to_jsonld(landscape)
+    assert "prov:wasGeneratedBy" not in result

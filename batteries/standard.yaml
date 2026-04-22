@@ -1,0 +1,14 @@
+model: gemma-4-26b-a4b-it
+max_context: 0
+runs:
+  - policy_examples/aramco.md
+  - policy_examples/atlas-telecom.md
+  - policy_examples/commonwealth-insurance.md
+  - policy_examples/dhs-gov.md
+  - policy_examples/generic.md
+  - policy_examples/healthcare.md
+  - policy_examples/law.md
+  - policy_examples/meridian-bank.md
+  - policy_examples/nexus-healthcare.json
+  - policy_examples/rdash-nhs.md
+  - policy_examples/swb.md

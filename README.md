@@ -72,8 +72,9 @@ uv run risk-landscaper run policy.json -o output/ \
   --skip-entity-enrichment \
   --skip-chain-enrichment
 
-# Run all policy examples in parallel
-uv run python run_all_policies.py --base-url ... --model ... --nexus-base-dir ... -j 4
+# Run policy batteries in parallel
+python run_all_policies.py batteries/standard.yaml --base-url http://localhost:8000/v1
+python run_all_policies.py batteries/frontier.yaml --base-url http://localhost:8000/v1 --model override-model -j 4
 
 # With debug logging
 uv run risk-landscaper run policy.json -o output/ \
@@ -122,7 +123,7 @@ uv run pytest           # 268 tests
 uv run pytest -v        # verbose
 ```
 
-11 policy examples across 6 domains (banking, healthcare, government, corporate, energy, telecom, insurance) in `policy_examples/`. 76 parametrized battery tests exercise format detection, parsing, ingest orchestration, content checks, and domain overrides against all examples.
+11 standard policy examples across 6 domains (banking, healthcare, government, corporate, energy, telecom, insurance) and 12 frontier safety policy runs (from 12 organizations, 3 multi-doc groups) in `policy_examples/`. YAML battery configs in `batteries/` define run sets. 76 parametrized battery tests exercise format detection, parsing, ingest orchestration, content checks, and domain overrides against all examples.
 
 See [CLAUDE.md](CLAUDE.md) for development conventions, [docs/design.md](docs/design.md) for the full design, and [docs/work-tracker.md](docs/work-tracker.md) for implementation status.
 

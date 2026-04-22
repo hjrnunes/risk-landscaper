@@ -1,0 +1,15 @@
+model: gemma-4-26b-a4b-it
+max_context: 0
+runs:
+  - policy_examples/amazon-fmsf.pdf
+  - policy_examples/anthropic/
+  - policy_examples/cohere-safmf.pdf
+  - policy_examples/deepmind-fsf-v3.0.pdf
+  - policy_examples/g42-fasf.pdf
+  - policy_examples/magic-arp-v1.0.md
+  - policy_examples/meta/
+  - policy_examples/microsoft-fgf.pdf
+  - policy_examples/naver-asf.md
+  - policy_examples/nvidia-fara.pdf
+  - policy_examples/openai-preparedness-v2.0.pdf
+  - policy_examples/xai/
