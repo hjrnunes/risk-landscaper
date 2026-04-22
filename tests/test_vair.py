@@ -188,8 +188,8 @@ def test_trustworthy_reliability_from_keywords():
 
 
 def test_trustworthy_resilience_from_keywords():
-    vair = match_all("system cannot recover from failures gracefully")
-    chars = match_trustworthy_characteristics("system cannot recover from failures gracefully", vair)
+    vair = match_all("system lacks failure recovery and resilience")
+    chars = match_trustworthy_characteristics("system lacks failure recovery and resilience", vair)
     assert "resilience" in chars
 
 

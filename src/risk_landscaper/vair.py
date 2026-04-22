@@ -214,12 +214,12 @@ TRUSTWORTHY_CHARACTERISTICS: list[TrustworthyCharacteristic] = [
     TrustworthyCharacteristic(
         "reliability", "implicit", "Art.15(1)",
         [],
-        ["reliab", "consistent", "dependab"],
+        ["reliab", "dependab"],
     ),
     TrustworthyCharacteristic(
         "resilience", "implicit", "Art.15(4)",
         [],
-        ["resilien", "recover", "fault-tolerant", "fault tolerant"],
+        ["resilien", "recovery", "fault-tolerant", "fault tolerant"],
     ),
 ]
 
@@ -228,6 +228,7 @@ def match_trustworthy_characteristics(
     text: str,
     vair_matches: dict[str, list[VairType]],
 ) -> list[str]:
+    """Return sorted characteristic names matched by VAIR type IDs or keyword fallback."""
     matched_vair_ids: set[str] = set()
     for types in vair_matches.values():
         for t in types:
