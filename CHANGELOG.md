@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **JSON-LD serialization** — `serialize.py` module exports RiskLandscape to JSON-LD with AIRO/VAIR/DPV/Nexus ontology mappings. `landscape_to_jsonld()` function produces valid JSON-LD with `@context` and structured RiskCard nodes. 3 tests covering empty landscapes, minimal RiskCards, and None field omission.
+
 ## [0.2.0] - 2026-04-21
 
 AIRO Risk Card alignment — evolved the data model and pipeline to produce governance-aware risk artifacts.
