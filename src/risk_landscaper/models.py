@@ -78,6 +78,7 @@ class Policy(BaseModel):
     affects_stakeholders: list[str] = []
     applies_to_systems: list[str] = []
     decomposition: PolicyDecomposition | None = None
+    source_documents: list[str] = []
 
 
 class PolicyProfile(BaseModel):
@@ -89,6 +90,7 @@ class PolicyProfile(BaseModel):
     stakeholders: list[Stakeholder] = []
     regulations: list[RegulatoryReference] = []
     policies: list[Policy] = []
+    source_documents: list[str] = []
 
     @field_validator("organization", mode="before")
     @classmethod

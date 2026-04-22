@@ -213,6 +213,49 @@ def test_coverage_gap_creation():
     assert gap.confidence == 0.85
 
 
+def test_policy_source_documents_default():
+    p = Policy(policy_concept="Fraud", concept_definition="About fraud")
+    assert p.source_documents == []
+
+
+def test_policy_source_documents_set():
+    p = Policy(
+        policy_concept="Fraud", concept_definition="About fraud",
+        source_documents=["policy.pdf", "faq.md"],
+    )
+    assert p.source_documents == ["policy.pdf", "faq.md"]
+
+
+def test_policy_profile_source_documents_default():
+    profile = PolicyProfile(policies=[])
+    assert profile.source_documents == []
+
+
+def test_policy_profile_source_documents_set():
+    profile = PolicyProfile(
+        policies=[],
+        source_documents=["policy.pdf", "annex.docx"],
+    )
+    assert profile.source_documents == ["policy.pdf", "annex.docx"]
+
+
+def test_policy_profile_round_trip_with_source_documents():
+    profile = PolicyProfile(
+        organization=Organization(name="Acme"),
+        policies=[
+            Policy(
+                policy_concept="Fraud", concept_definition="About fraud",
+                source_documents=["doc1.md"],
+            ),
+        ],
+        source_documents=["doc1.md", "doc2.pdf"],
+    )
+    data = profile.model_dump()
+    restored = PolicyProfile(**data)
+    assert restored.source_documents == ["doc1.md", "doc2.pdf"]
+    assert restored.policies[0].source_documents == ["doc1.md"]
+
+
 def test_run_report_to_dict():
     report = RunReport(model="test", policy_set="test.json", timestamp="2026-01-01")
     report.stages_completed.append("ingest")

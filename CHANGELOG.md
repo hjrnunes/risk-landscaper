@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **`source_documents` provenance field** — `list[str]` field on `Policy` and `PolicyProfile` (defaults to `[]`) for tracking which input documents contributed each policy and the overall profile. Backward compatible with existing serialized data.
 - **JSON-LD serialization** — `serialize.py` module exports RiskLandscape to JSON-LD with AIRO/VAIR/DPV/Nexus ontology mappings. `landscape_to_jsonld()` produces valid JSON-LD with `@context` (including `@reverse` annotations for correct RDF directionality) and structured RiskCard nodes. Complete causal chain serialization: risk sources (with VAIR type mapping), consequences, impacts (with harm types and impacted areas), typed controls (AIRO property mapping), incidents (`rl:hasIncident`), evaluations (`rl:Evaluation`), coverage gaps (`rl:coverageGap`), envelope metadata, and governance provenance. Composable with AIROO advisory data foundation triples via shared `nexus:` identifiers. 20 tests.
 - **Turtle serialization** — `landscape_to_turtle()` converts RiskLandscape to RDF Turtle format via optional `rdflib` dependency. Optional `[rdf]` extra (`pip install 'risk-landscaper[rdf]'`). Raises helpful ImportError when rdflib not installed.
 - **Export subcommand** — `risk-landscaper export` CLI command converts existing risk landscape YAML files to JSON-LD or Turtle format. `--format` flag defaults to `jsonld`, also supports `turtle`. Outputs to `risk-landscape.jsonld` or `risk-landscape.ttl` in the specified directory.
