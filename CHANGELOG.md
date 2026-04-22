@@ -6,7 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **JSON-LD serialization** — `serialize.py` module exports RiskLandscape to JSON-LD with AIRO/VAIR/DPV/Nexus ontology mappings. `landscape_to_jsonld()` function produces valid JSON-LD with `@context` and structured RiskCard nodes. 3 tests covering empty landscapes, minimal RiskCards, and None field omission.
+- **JSON-LD serialization** — `serialize.py` module exports RiskLandscape to JSON-LD with AIRO/VAIR/DPV/Nexus ontology mappings. `landscape_to_jsonld()` function produces valid JSON-LD with `@context` and structured RiskCard nodes.
+  - Core serialization: empty landscapes, minimal RiskCards, and None field omission (3 tests).
+  - Causal chain serialization: risk sources (with VAIR type mapping), consequences, impacts (with VAIR harm types and impacted areas) (3 tests).
+  - Controls, incidents, evaluations serialization: control type to AIRO property mapping (`detect` -> `airo:detectsRiskConcept`, `evaluate` -> `rl:evaluatesRiskConcept`, `mitigate` -> `airo:mitigatesRiskConcept`, `eliminate` -> `airo:eliminatesRiskConcept`), incidents as `dpv:Incident`, evaluations as `rl:Evaluation` (3 tests).
+  - 9 tests total covering complete RiskCard serialization to JSON-LD.
 
 ## [0.2.0] - 2026-04-21
 
