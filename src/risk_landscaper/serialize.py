@@ -13,6 +13,8 @@ JSONLD_CONTEXT = {
     "dpv": "https://w3id.org/dpv#",
     "rl": "https://trustyai.io/risk-landscaper/",
     "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "airo:isRiskSourceFor": {"@reverse": "airo:isRiskSourceFor"},
+    "airo:modifiesRiskConcept": {"@reverse": "airo:modifiesRiskConcept"},
 }
 
 SOURCE_TYPE_TO_VAIR = {
@@ -117,6 +119,19 @@ def _serialize_evaluation(ev) -> dict:
     return node
 
 
+def _serialize_coverage_gap(gap) -> dict:
+    node: dict = {
+        "rl:policyConcept": gap.policy_concept,
+        "rl:conceptDefinition": gap.concept_definition,
+        "rl:gapType": gap.gap_type,
+        "rl:confidence": gap.confidence,
+        "rl:reasoning": gap.reasoning,
+    }
+    if gap.nearest_risks:
+        node["rl:nearestRisks"] = gap.nearest_risks
+    return node
+
+
 def _serialize_provenance(prov) -> dict:
     node: dict = {}
     if prov.produced_by:
@@ -169,7 +184,7 @@ def _serialize_risk_card(card) -> dict:
     if card.controls:
         node["airo:modifiesRiskConcept"] = [_serialize_control(c) for c in card.controls]
     if card.incidents:
-        node["dpv:Incident"] = [_serialize_incident(i) for i in card.incidents]
+        node["rl:hasIncident"] = [_serialize_incident(i) for i in card.incidents]
     if card.evaluations:
         node["rl:evaluation"] = [_serialize_evaluation(e) for e in card.evaluations]
     return node
@@ -198,6 +213,8 @@ def landscape_to_jsonld(landscape: RiskLandscape) -> dict:
     if landscape.knowledge_base:
         kb = landscape.knowledge_base.model_dump()
         doc["rl:knowledgeBase"] = {k: v for k, v in kb.items() if v}
+    if landscape.coverage_gaps:
+        doc["rl:coverageGap"] = [_serialize_coverage_gap(g) for g in landscape.coverage_gaps]
     if landscape.provenance:
         doc["rl:provenance"] = _serialize_provenance(landscape.provenance)
     return doc

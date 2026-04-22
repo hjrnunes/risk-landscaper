@@ -1,5 +1,5 @@
 # tests/test_serialize.py
-from risk_landscaper.models import RiskLandscape, RiskCard, RiskSource, RiskConsequence, RiskImpact, RiskControl, RiskIncidentRef, EvaluationRef, GovernanceProvenance, PolicySourceRef, KnowledgeBaseRef
+from risk_landscaper.models import RiskLandscape, RiskCard, RiskSource, RiskConsequence, RiskImpact, RiskControl, RiskIncidentRef, EvaluationRef, GovernanceProvenance, PolicySourceRef, KnowledgeBaseRef, CoverageGap
 from risk_landscaper.serialize import landscape_to_jsonld, SOURCE_TYPE_TO_VAIR, _vair_iri
 
 
@@ -168,7 +168,7 @@ def test_incidents_serialize():
     )
     result = landscape_to_jsonld(landscape)
     card = result["rl:hasRiskCard"][0]
-    incidents = card["dpv:Incident"]
+    incidents = card["rl:hasIncident"]
     assert len(incidents) == 1
     inc = incidents[0]
     assert inc["@type"] == "dpv:Incident"
@@ -329,3 +329,51 @@ def test_turtle_without_rdflib_raises():
     with patch("builtins.__import__", side_effect=mock_import):
         with pytest.raises(ImportError, match="rdflib"):
             landscape_to_turtle(landscape)
+
+
+def test_context_has_reverse_annotations():
+    landscape = RiskLandscape(run_slug="test-run")
+    result = landscape_to_jsonld(landscape)
+    ctx = result["@context"]
+    assert ctx["airo:isRiskSourceFor"] == {"@reverse": "airo:isRiskSourceFor"}
+    assert ctx["airo:modifiesRiskConcept"] == {"@reverse": "airo:modifiesRiskConcept"}
+
+
+def test_coverage_gaps_serialize():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        coverage_gaps=[
+            CoverageGap(
+                policy_concept="AI-assisted triage",
+                concept_definition="Using AI to prioritize patient care",
+                gap_type="novel",
+                confidence=0.85,
+                nearest_risks=[{"risk_id": "bias-discrimination-output", "distance": 0.3}],
+                reasoning="No existing risk covers AI triage specifically",
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    gaps = result["rl:coverageGap"]
+    assert len(gaps) == 1
+    gap = gaps[0]
+    assert gap["rl:policyConcept"] == "AI-assisted triage"
+    assert gap["rl:gapType"] == "novel"
+    assert gap["rl:confidence"] == 0.85
+    assert gap["rl:nearestRisks"] == [{"risk_id": "bias-discrimination-output", "distance": 0.3}]
+
+
+def test_incidents_use_rl_hasIncident_key():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        risks=[
+            RiskCard(
+                risk_id="test-risk", risk_name="Test",
+                incidents=[RiskIncidentRef(name="Test Incident")],
+            ),
+        ],
+    )
+    result = landscape_to_jsonld(landscape)
+    card = result["rl:hasRiskCard"][0]
+    assert "rl:hasIncident" in card
+    assert "dpv:Incident" not in card
