@@ -4,6 +4,7 @@ from risk_landscaper.vair import (
     match_impacts,
     match_impacted_areas,
     match_all,
+    match_trustworthy_characteristics,
 )
 
 
@@ -124,3 +125,103 @@ def test_match_all_combines():
 def test_match_all_empty():
     result = match_all("")
     assert all(len(v) == 0 for v in result.values())
+
+
+def test_trustworthy_fairness_from_vair():
+    vair = match_all("biased and discriminatory outputs")
+    chars = match_trustworthy_characteristics("biased and discriminatory outputs", vair)
+    assert "fairness" in chars
+
+
+def test_trustworthy_cybersecurity_from_vair():
+    vair = match_all("cyberattack exploiting system vulnerability")
+    chars = match_trustworthy_characteristics("cyberattack exploiting system vulnerability", vair)
+    assert "cybersecurity" in chars
+
+
+def test_trustworthy_accuracy_from_vair():
+    vair = match_all("low accuracy and degraded predictions")
+    chars = match_trustworthy_characteristics("low accuracy and degraded predictions", vair)
+    assert "accuracy" in chars
+
+
+def test_trustworthy_robustness_from_vair():
+    vair = match_all("decreased robustness under perturbation")
+    chars = match_trustworthy_characteristics("decreased robustness under perturbation", vair)
+    assert "robustness" in chars
+
+
+def test_trustworthy_transparency_from_vair():
+    vair = match_all("lack of transparency in decision making")
+    chars = match_trustworthy_characteristics("lack of transparency in decision making", vair)
+    assert "transparency" in chars
+
+
+def test_trustworthy_safety_from_vair():
+    vair = match_all("fatal errors in safety-critical healthcare system")
+    chars = match_trustworthy_characteristics("fatal errors in safety-critical healthcare system", vair)
+    assert "safety" in chars
+
+
+def test_trustworthy_accountability_from_vair():
+    vair = match_all("overreliance on automated decisions with impaired decision making")
+    chars = match_trustworthy_characteristics("overreliance on automated decisions with impaired decision making", vair)
+    assert "accountability" in chars
+
+
+def test_trustworthy_controllability_from_vair():
+    vair = match_all("insufficient human oversight measure")
+    chars = match_trustworthy_characteristics("insufficient human oversight measure", vair)
+    assert "controllability" in chars
+
+
+def test_trustworthy_privacy_from_keywords():
+    vair = match_all("personal data exposure and privacy breach")
+    chars = match_trustworthy_characteristics("personal data exposure and privacy breach", vair)
+    assert "privacy" in chars
+
+
+def test_trustworthy_reliability_from_keywords():
+    vair = match_all("system produces inconsistent and unreliable results")
+    chars = match_trustworthy_characteristics("system produces inconsistent and unreliable results", vair)
+    assert "reliability" in chars
+
+
+def test_trustworthy_resilience_from_keywords():
+    vair = match_all("system cannot recover from failures gracefully")
+    chars = match_trustworthy_characteristics("system cannot recover from failures gracefully", vair)
+    assert "resilience" in chars
+
+
+def test_trustworthy_transparency_from_keywords():
+    vair = match_all("opaque model with no explainability")
+    chars = match_trustworthy_characteristics("opaque model with no explainability", vair)
+    assert "transparency" in chars
+
+
+def test_trustworthy_empty_text():
+    vair = match_all("")
+    chars = match_trustworthy_characteristics("", vair)
+    assert chars == []
+
+
+def test_trustworthy_no_matches():
+    vair = match_all("routine data processing pipeline")
+    chars = match_trustworthy_characteristics("routine data processing pipeline", vair)
+    assert chars == []
+
+
+def test_trustworthy_multiple_characteristics():
+    text = "biased model with low security and lack of transparency"
+    vair = match_all(text)
+    chars = match_trustworthy_characteristics(text, vair)
+    assert "fairness" in chars
+    assert "cybersecurity" in chars
+    assert "transparency" in chars
+
+
+def test_trustworthy_returns_sorted():
+    text = "unsafe biased insecure system with privacy violations"
+    vair = match_all(text)
+    chars = match_trustworthy_characteristics(text, vair)
+    assert chars == sorted(chars)

@@ -151,6 +151,100 @@ IMPACTED_AREAS: list[VairType] = [
 ]
 
 
+@dataclass(frozen=True)
+class TrustworthyCharacteristic:
+    name: str
+    iso24028_clause: str | None
+    aiact_article: str | None
+    vair_type_ids: list[str]
+    keywords: list[str]
+
+
+# ISO/IEC 24028 + EU AI Act Art. 9-15 trustworthy characteristics.
+# Each characteristic is inferred from VAIR type matches (free) and/or
+# keyword heuristics against risk description + concern text.
+# Sources: ISO/IEC TR 24028:2020 clauses 6-12, EU AI Act Art. 9-15,
+# W3C DPV risk extension (risk:AccuracyRisk, risk:RobustnessRisk, etc.)
+TRUSTWORTHY_CHARACTERISTICS: list[TrustworthyCharacteristic] = [
+    TrustworthyCharacteristic(
+        "accuracy", "implicit", "Art.15(1)",
+        ["DegradedAccuracy", "LowAccuracy"],
+        ["inaccura"],
+    ),
+    TrustworthyCharacteristic(
+        "robustness", "implicit", "Art.15(3)",
+        ["DecreasedRobustness", "LowRobustness"],
+        [],
+    ),
+    TrustworthyCharacteristic(
+        "cybersecurity", "cl.9", "Art.15(4)",
+        ["DecreasedSecurity", "LowSecurity", "Cyberattack", "SystemVulnerability"],
+        [],
+    ),
+    TrustworthyCharacteristic(
+        "transparency", "cl.6", "Art.13",
+        ["LackOfTransparency"],
+        ["explainab", "interpretab", "opaque", "black box", "unexplainab"],
+    ),
+    TrustworthyCharacteristic(
+        "fairness", "cl.11", "Art.10",
+        ["Bias", "DiscriminatoryTreatment", "UnfavourableTreatment"],
+        [],
+    ),
+    TrustworthyCharacteristic(
+        "privacy", "cl.10", "Art.10",
+        [],
+        ["privacy", "personal data", "data protection", "confidential"],
+    ),
+    TrustworthyCharacteristic(
+        "safety", "cl.8", "Art.9",
+        ["Safety", "Death", "PhysicalInjury"],
+        ["hazard", "dangerous"],
+    ),
+    TrustworthyCharacteristic(
+        "accountability", "cl.12", "Art.17",
+        ["Overreliance", "ImpairedDecisionMaking"],
+        ["accountab", "liable", "liability"],
+    ),
+    TrustworthyCharacteristic(
+        "controllability", "cl.7", "Art.14",
+        ["InsufficientHumanOversightMeasure"],
+        ["human oversight", "human-in-the-loop", "human in the loop"],
+    ),
+    TrustworthyCharacteristic(
+        "reliability", "implicit", "Art.15(1)",
+        [],
+        ["reliab", "consistent", "dependab"],
+    ),
+    TrustworthyCharacteristic(
+        "resilience", "implicit", "Art.15(4)",
+        [],
+        ["resilien", "recover", "fault-tolerant", "fault tolerant"],
+    ),
+]
+
+
+def match_trustworthy_characteristics(
+    text: str,
+    vair_matches: dict[str, list[VairType]],
+) -> list[str]:
+    matched_vair_ids: set[str] = set()
+    for types in vair_matches.values():
+        for t in types:
+            matched_vair_ids.add(t.id)
+
+    lower = text.lower()
+    result: set[str] = set()
+    for tc in TRUSTWORTHY_CHARACTERISTICS:
+        if any(vid in matched_vair_ids for vid in tc.vair_type_ids):
+            result.add(tc.name)
+            continue
+        if any(kw in lower for kw in tc.keywords):
+            result.add(tc.name)
+
+    return sorted(result)
+
+
 def _match_types(text: str, types: list[VairType]) -> list[VairType]:
     lower = text.lower()
     return [t for t in types if any(kw in lower for kw in t.keywords)]
