@@ -115,6 +115,21 @@ def _serialize_evaluation(ev) -> dict:
     return node
 
 
+def _serialize_provenance(prov) -> dict:
+    node: dict = {}
+    if prov.produced_by:
+        node["rl:producedBy"] = prov.produced_by
+    if prov.governance_function:
+        node["rl:governanceFunction"] = prov.governance_function
+    if prov.aims_activities:
+        node["rl:aimsActivity"] = prov.aims_activities
+    if prov.reviewed_by:
+        node["rl:reviewedBy"] = prov.reviewed_by
+    if prov.review_status:
+        node["rl:reviewStatus"] = prov.review_status
+    return node
+
+
 def _serialize_risk_card(card) -> dict:
     node: dict = {
         "@id": f"nexus:{card.risk_id}",
@@ -166,4 +181,21 @@ def landscape_to_jsonld(landscape: RiskLandscape) -> dict:
         "rl:version": landscape.version,
         "rl:hasRiskCard": [_serialize_risk_card(card) for card in landscape.risks],
     }
+    if landscape.timestamp:
+        doc["rl:timestamp"] = landscape.timestamp
+    if landscape.model:
+        doc["rl:model"] = landscape.model
+    if landscape.selected_domains:
+        doc["rl:selectedDomains"] = landscape.selected_domains
+    if landscape.framework_coverage:
+        doc["rl:frameworkCoverage"] = landscape.framework_coverage
+    if landscape.policy_source:
+        doc["rl:policySource"] = {
+            k: v for k, v in landscape.policy_source.model_dump().items() if v
+        }
+    if landscape.knowledge_base:
+        kb = landscape.knowledge_base.model_dump()
+        doc["rl:knowledgeBase"] = {k: v for k, v in kb.items() if v}
+    if landscape.provenance:
+        doc["rl:provenance"] = _serialize_provenance(landscape.provenance)
     return doc

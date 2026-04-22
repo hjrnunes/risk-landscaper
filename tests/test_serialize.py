@@ -1,5 +1,5 @@
 # tests/test_serialize.py
-from risk_landscaper.models import RiskLandscape, RiskCard, RiskSource, RiskConsequence, RiskImpact, RiskControl, RiskIncidentRef, EvaluationRef
+from risk_landscaper.models import RiskLandscape, RiskCard, RiskSource, RiskConsequence, RiskImpact, RiskControl, RiskIncidentRef, EvaluationRef, GovernanceProvenance, PolicySourceRef, KnowledgeBaseRef
 from risk_landscaper.serialize import landscape_to_jsonld, SOURCE_TYPE_TO_VAIR, _vair_iri
 
 
@@ -248,3 +248,38 @@ def test_impact_unknown_harm_type_no_vair_iri():
     result = landscape_to_jsonld(landscape)
     imp = result["rl:hasRiskCard"][0]["airo:hasImpact"][0]
     assert imp["@type"] == "airo:Impact"
+
+
+def test_envelope_metadata():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        timestamp="2026-04-22T10:00:00Z",
+        model="granite-3.2-8b",
+        selected_domains=["banking"],
+        framework_coverage={"owasp-llm": 5, "nist-ai-rmf": 3},
+        policy_source=PolicySourceRef(organization="Acme Corp", domain="banking", policy_count=10),
+        knowledge_base=KnowledgeBaseRef(nexus_risk_count=600),
+    )
+    result = landscape_to_jsonld(landscape)
+    assert result["rl:timestamp"] == "2026-04-22T10:00:00Z"
+    assert result["rl:model"] == "granite-3.2-8b"
+    assert result["rl:selectedDomains"] == ["banking"]
+    assert result["rl:frameworkCoverage"] == {"owasp-llm": 5, "nist-ai-rmf": 3}
+
+
+def test_provenance_serializes():
+    landscape = RiskLandscape(
+        run_slug="test-run",
+        provenance=GovernanceProvenance(
+            produced_by="risk-landscaper",
+            governance_function="evaluate",
+            aims_activities=["aimsA6", "aimsA8"],
+            review_status="draft",
+        ),
+    )
+    result = landscape_to_jsonld(landscape)
+    prov = result["rl:provenance"]
+    assert prov["rl:producedBy"] == "risk-landscaper"
+    assert prov["rl:governanceFunction"] == "evaluate"
+    assert prov["rl:aimsActivity"] == ["aimsA6", "aimsA8"]
+    assert prov["rl:reviewStatus"] == "draft"
